@@ -1,0 +1,41 @@
+import type { Metadata } from "next";
+import { Public_Sans, IBM_Plex_Mono } from "next/font/google";
+import "./globals.css";
+
+const publicSans = Public_Sans({
+  subsets: ["latin"],
+  variable: "--font-public-sans",
+  display: "swap",
+});
+
+const plexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-plex-mono",
+  display: "swap",
+});
+
+export const metadata: Metadata = {
+  title: "Rank Tracker",
+  description: "Keyword rank tracking powered by Bright Data's SERP API",
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en" className={`${publicSans.variable} ${plexMono.variable}`}>
+      <body className="min-h-screen bg-paper font-sans text-ink antialiased">
+        <header className="border-b border-line">
+          <div className="mx-auto max-w-4xl px-6 py-4 flex items-center justify-between">
+            <a href="/" className="text-[15px] font-semibold tracking-tight text-ink">
+              Rank Tracker
+            </a>
+            <a href="/settings" className="text-sm text-muted hover:text-accent">
+              Settings
+            </a>
+          </div>
+        </header>
+        <main className="mx-auto max-w-4xl px-6 py-10">{children}</main>
+      </body>
+    </html>
+  );
+}

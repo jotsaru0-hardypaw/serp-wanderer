@@ -1,0 +1,119 @@
+// Thin client around Bright Data's SERP API (https://docs.brightdata.com/scraping-automation/serp-api)
+//
+// Uses data_format=parsed_light, which returns the top ~10 organic Google results
+// per request as clean JSON — no HTML parsing needed. Position beyond page 1 would
+// require paging with the Google `start` param (start=10, 20, ...), which this
+// client supports via the `page` argument if you want to extend it later.
+
+import { getSettings } from "./settings";
+
+export type OrganicResult = {
+  link: string;
+  title: string;
+  description?: string;
+  global_rank: number;
+};
+
+export type SerpResult = {
+  organic: OrganicResult[];
+};
+
+export class BrightDataError extends Error {
+  status?: number;
+  constructor(message: string, status?: number) {
+    super(message);
+    this.name = "BrightDataError";
+    this.status = status;
+  }
+}
+
+/**
+ * Fetch Google search results for a single keyword via Bright Data's SERP API.
+ */
+export async function fetchSerp(params: {
+  keyword: string;
+  country: string; // "gl" — e.g. "us"
+  language: string; // "hl" — e.g. "en"
+  device?: "desktop" | "mobile";
+  page?: number; // 0-indexed page of results; page 1 = results 10-19, etc.
+}): Promise<SerpResult> {
+  const { brightdataApiKey: apiKey, brightdataZone: zone } = await getSettings();
+  if (!apiKey || !zone) {
+    throw new BrightDataError(
+      "Bright Data isn't configured yet — add your API key and zone name on the Settings page."
+    );
+  }
+
+  const searchParams = new URLSearchParams({
+    q: params.keyword,
+    gl: params.country,
+    hl: params.language,
+  });
+  if (params.device === "mobile") {
+    searchParams.set("brd_mobile", "1");
+  }
+  if (params.page && params.page > 0) {
+    searchParams.set("start", String(params.page * 10));
+  }
+
+  const googleUrl = `https://www.google.com/search?${searchParams.toString()}`;
+
+  const resp = await fetch("https://api.brightdata.com/request", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      zone,
+      url: googleUrl,
+      format: "raw",
+      data_format: "parsed_light",
+    }),
+    // Bright Data SERP responses are usually sub-second but can occasionally
+    // take longer under load; give it real room before giving up.
+    signal: AbortSignal.timeout(30_000),
+  });
+
+  if (!resp.ok) {
+    const body = await resp.text().catch(() => "");
+    throw new BrightDataError(
+      `Bright Data request failed (${resp.status}): ${body.slice(0, 300)}`,
+      resp.status
+    );
+  }
+
+  const data = (await resp.json()) as SerpResult;
+  return { organic: data.organic ?? [] };
+}
+
+/**
+ * Extract a bare hostname for comparison, e.g.
+ * "https://www.hardypaw.com/products/x" -> "hardypaw.com"
+ */
+function bareHost(url: string): string {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host.startsWith("www.") ? host.slice(4) : host;
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Given SERP results and a target domain, find the best-ranking match.
+ * Returns null if the domain doesn't appear in the fetched results.
+ */
+export function findRanking(
+  serp: SerpResult,
+  targetDomain: string
+): { position: number; url: string } | null {
+  const target = targetDomain.toLowerCase().replace(/^www\./, "");
+  const match = serp.organic
+    .slice()
+    .sort((a, b) => a.global_rank - b.global_rank)
+    .find((r) => bareHost(r.link) === target);
+
+  if (!match) return null;
+  return { position: match.global_rank, url: match.link };
+}

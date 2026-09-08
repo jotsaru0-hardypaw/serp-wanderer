@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Domain {
+  id        String     @id @default(cuid())
+  name      String     // e.g. "hardypaw.com" — bare hostname, no protocol/www
+  createdAt DateTime   @default(now())
+  keywords  Keyword[]
+}
+
+model Keyword {
+  id         String      @id @default(cuid())
+  domainId   String
+  domain     Domain      @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  term       String
+  country    String      @default("us") // Bright Data "gl" param, lowercase ISO 2-letter
+  language   String      @default("en") // Bright Data "hl" param
+  device     String      @default("desktop") // "desktop" | "mobile"
+  createdAt  DateTime    @default(now())
+  checks     RankCheck[]
+
+  @@index([domainId])
+}
+
+model RankCheck {
+  id         String   @id @default(cuid())
+  keywordId  String
+  keyword    Keyword  @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+  position   Int?     // null = not found in the results we fetched
+  url        String?  // the ranking URL that matched, if found
+  checkedAt  DateTime @default(now())
+
+  @@index([keywordId, checkedAt])
+}
+
+// Single-row table (id is always "singleton") holding settings entered
+// through the UI, so the app can run without any secrets in env vars.
+// Env vars (BRIGHTDATA_API_KEY / BRIGHTDATA_SERP_ZONE) still work as a
+// fallback if these are left empty — see lib/settings.ts.
+model Settings {
+  id               String   @id @default("singleton")
+  brightdataApiKey String?
+  brightdataZone   String?
+  defaultCountry   String   @default("us")
+  defaultLanguage  String   @default("en")
+  updatedAt        DateTime @updatedAt
+}

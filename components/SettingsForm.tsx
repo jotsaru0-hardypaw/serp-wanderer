@@ -1,0 +1,147 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+export default function SettingsForm({
+  currentKeyMasked,
+  currentZone,
+  currentCountry,
+  currentLanguage,
+}: {
+  currentKeyMasked: string | null;
+  currentZone: string;
+  currentCountry: string;
+  currentLanguage: string;
+}) {
+  const [apiKey, setApiKey] = useState("");
+  const [zone, setZone] = useState(currentZone);
+  const [country, setCountry] = useState(currentCountry);
+  const [language, setLanguage] = useState(currentLanguage);
+  const [loading, setLoading] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSaved(false);
+
+    const res = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        brightdataApiKey: apiKey, // blank = leave unchanged, see lib/settings.ts
+        brightdataZone: zone,
+        defaultCountry: country,
+        defaultLanguage: language,
+      }),
+    });
+
+    setLoading(false);
+    if (!res.ok) {
+      setError("Couldn't save settings — try again.");
+      return;
+    }
+    setApiKey("");
+    setSaved(true);
+    router.refresh();
+  }
+
+  const inputClasses =
+    "w-full rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40";
+  const labelClasses = "block text-sm text-ink mb-1";
+  const helpClasses = "text-xs text-muted mt-1";
+
+  return (
+    <form onSubmit={submit} className="space-y-5">
+      <div>
+        <label className={labelClasses} htmlFor="apiKey">
+          Bright Data API key
+        </label>
+        <input
+          id="apiKey"
+          type="password"
+          value={apiKey}
+          onChange={(e) => setApiKey(e.target.value)}
+          placeholder={currentKeyMasked ? currentKeyMasked : "Paste your API key"}
+          className={inputClasses}
+          autoComplete="off"
+        />
+        <p className={helpClasses}>
+          {currentKeyMasked
+            ? "A key is already saved. Leave this blank to keep it, or paste a new one to replace it."
+            : "From Bright Data → your account → SERP API zone."}
+        </p>
+      </div>
+
+      <div>
+        <label className={labelClasses} htmlFor="zone">
+          Bright Data SERP zone name
+        </label>
+        <input
+          id="zone"
+          value={zone}
+          onChange={(e) => setZone(e.target.value)}
+          placeholder="e.g. serp_zone1"
+          className={inputClasses}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelClasses} htmlFor="country">
+            Default location
+          </label>
+          <select
+            id="country"
+            value={country}
+            onChange={(e) => setCountry(e.target.value)}
+            className={inputClasses}
+          >
+            <option value="us">United States</option>
+            <option value="in">India</option>
+            <option value="gb">United Kingdom</option>
+            <option value="ca">Canada</option>
+            <option value="au">Australia</option>
+          </select>
+        </div>
+        <div>
+          <label className={labelClasses} htmlFor="language">
+            Default language
+          </label>
+          <select
+            id="language"
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            className={inputClasses}
+          >
+            <option value="en">English</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+            <option value="hi">Hindi</option>
+          </select>
+        </div>
+      </div>
+      <p className={helpClasses}>
+        Used to prefill new keywords — you can still override the location per keyword when you
+        add it.
+      </p>
+
+      <div className="flex items-center gap-3">
+        <button
+          type="submit"
+          disabled={loading}
+          className="rounded-md bg-ink text-white text-sm px-4 py-2 hover:bg-accent transition-colors motion-reduce:transition-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+        >
+          {loading ? "Saving…" : "Save settings"}
+        </button>
+        {saved && <span className="text-xs text-rise">Saved.</span>}
+        {error && <span className="text-xs text-fall">{error}</span>}
+      </div>
+    </form>
+  );
+}
