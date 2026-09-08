@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkAllKeywords } from "@/lib/rank";
 
+// Never statically prerendered — this route always reads/writes live
+// database state, and some deployments run before the schema migration
+// that adds newer columns has been applied, which would otherwise break
+// the production build.
+export const dynamic = "force-dynamic";
+
 // Allow this route to run long enough to check many keywords sequentially.
 export const maxDuration = 300;
 

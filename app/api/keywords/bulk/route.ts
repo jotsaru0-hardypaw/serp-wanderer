@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
+// Never statically prerendered — this route always reads/writes live
+// database state, and some deployments run before the schema migration
+// that adds newer columns has been applied, which would otherwise break
+// the production build.
+export const dynamic = "force-dynamic";
+
 // Bulk-added keywords are NOT checked immediately (unlike a single add) —
 // checking many keywords synchronously risks hitting function timeouts,
 // especially with a deep check-depth configured. They'll pick up a position

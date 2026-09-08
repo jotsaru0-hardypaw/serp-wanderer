@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Public_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
+import { APP_VERSION, LAST_UPDATED } from "@/lib/version";
 
 const publicSans = Public_Sans({
   subsets: ["latin"],
@@ -20,14 +21,26 @@ export const metadata: Metadata = {
   description: "Keyword rank tracking powered by Bright Data's SERP API",
 };
 
+const lastUpdatedFormatted = new Date(LAST_UPDATED).toLocaleDateString(undefined, {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+});
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${publicSans.variable} ${plexMono.variable}`}>
       <body className="min-h-screen bg-paper font-sans text-ink antialiased">
         <header className="border-b border-line">
           <div className="mx-auto max-w-4xl px-6 py-4 flex items-center justify-between">
-            <a href="/" className="text-[15px] font-semibold tracking-tight text-ink">
-              SERP Wanderer
+            <a href="/" className="flex items-baseline gap-1.5">
+              <span className="text-[15px] font-semibold tracking-tight text-ink">SERP Wanderer</span>
+              <span
+                className="text-xs text-muted cursor-default"
+                title={`Last updated ${lastUpdatedFormatted}`}
+              >
+                · {APP_VERSION}
+              </span>
             </a>
             <a href="/settings" className="text-sm text-muted hover:text-accent">
               Settings

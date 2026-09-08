@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSettings, updateSettings, maskSecret } from "@/lib/settings";
 
+// Never statically prerendered — this route always reads/writes live
+// database state, and some deployments run before the schema migration
+// that adds newer columns has been applied, which would otherwise break
+// the production build.
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const settings = await getSettings();
   return NextResponse.json({

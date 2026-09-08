@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { getSettings } from "@/lib/settings";
 
+// Never statically prerendered — this route always reads/writes live
+// database state, and some deployments run before the schema migration
+// that adds newer columns has been applied, which would otherwise break
+// the production build.
+export const dynamic = "force-dynamic";
+
 // Bright Data's /customer/balance endpoint reports paid account balance (USD),
 // not the separate free-tier monthly credit allowance — there's no
 // documented public API for that figure, so this can't show "X/5,000 free
