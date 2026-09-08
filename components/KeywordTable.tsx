@@ -165,7 +165,9 @@ export default function KeywordTable({
   domainId: string;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [checkingIds, setCheckingIds] = useState<Set<string>>(new Set());
+  const [justUpdatedIds, setJustUpdatedIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -259,23 +261,39 @@ export default function KeywordTable({
     });
   }
 
+  function flashUpdated(id: string) {
+    setJustUpdatedIds((prev) => new Set(prev).add(id));
+    setTimeout(() => {
+      setJustUpdatedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }, 2500);
+  }
+
   async function checkOne(id: string) {
-    setBusyId(id);
+    setCheckingIds((prev) => new Set(prev).add(id));
     setErrors((prev) => ({ ...prev, [id]: "" }));
 
     const res = await fetch(`/api/keywords/${id}/check`, { method: "POST" }).catch(() => null);
     const outcome = await res?.json().catch(() => null);
 
     setErrors((prev) => ({ ...prev, [id]: outcome?.error ?? "" }));
-    setBusyId(null);
+    setCheckingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+    if (!outcome?.error) flashUpdated(id);
     router.refresh();
   }
 
   async function removeOne(id: string) {
     if (!confirm("Remove this keyword?")) return;
-    setBusyId(id);
+    setRemovingId(id);
     await fetch(`/api/keywords/${id}`, { method: "DELETE" }).catch(() => null);
-    setBusyId(null);
+    setRemovingId(null);
     router.refresh();
   }
 
@@ -285,13 +303,36 @@ export default function KeywordTable({
     if (action === "remove" && !confirm(`Remove ${ids.length} selected keyword${ids.length === 1 ? "" : "s"}?`)) {
       return;
     }
+
+    if (action === "check") {
+      setCheckingIds((prev) => {
+        const next = new Set(prev);
+        ids.forEach((id) => next.add(id));
+        return next;
+      });
+    }
+
     setBulkBusy(true);
-    await fetch("/api/keywords/bulk-action", {
+    const res = await fetch("/api/keywords/bulk-action", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ids, action }),
     }).catch(() => null);
+    const body = await res?.json().catch(() => null);
     setBulkBusy(false);
+
+    if (action === "check") {
+      setCheckingIds((prev) => {
+        const next = new Set(prev);
+        ids.forEach((id) => next.delete(id));
+        return next;
+      });
+      const outcomes = body?.outcomes as { keywordId: string; error?: string }[] | undefined;
+      outcomes?.forEach((o) => {
+        if (!o.error) flashUpdated(o.keywordId);
+      });
+    }
+
     setSelected(new Set());
     router.refresh();
   }
@@ -426,7 +467,9 @@ export default function KeywordTable({
         {visible.map((kw, index) => {
           const [latest, prev] = kw.checks;
           const isOpen = expanded === kw.id;
-          const isBusy = busyId === kw.id;
+          const isChecking = checkingIds.has(kw.id);
+          const isRemoving = removingId === kw.id;
+          const justUpdated = justUpdatedIds.has(kw.id);
           const error = errors[kw.id];
           const city = cityLabel(kw.location);
           return (
@@ -445,7 +488,15 @@ export default function KeywordTable({
                   onClick={() => setExpanded(isOpen ? null : kw.id)}
                   className="text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 rounded-sm"
                 >
-                  <div className="text-sm text-ink">{kw.term}</div>
+                  <div className="flex items-center gap-1.5">
+                    {isChecking && <Spinner className="text-muted shrink-0" />}
+                    {!isChecking && justUpdated && (
+                      <span className="text-rise text-xs shrink-0" aria-label="Updated">
+                        ✓
+                      </span>
+                    )}
+                    <span className="text-sm text-ink">{kw.term}</span>
+                  </div>
                   <div className="text-xs text-muted">
                     {kw.country.toUpperCase()}
                     {city ? ` · ${city}` : ""} · {kw.device}
@@ -479,16 +530,15 @@ export default function KeywordTable({
 
                 <button
                   onClick={() => checkOne(kw.id)}
-                  disabled={isBusy}
-                  className="flex items-center gap-1 text-xs text-muted hover:text-accent disabled:opacity-50 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 rounded-sm"
+                  disabled={isChecking || isRemoving}
+                  className="text-xs text-muted hover:text-accent disabled:opacity-50 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 rounded-sm"
                 >
-                  {isBusy && <Spinner />}
-                  {isBusy ? "" : "Check"}
+                  Check
                 </button>
 
                 <button
                   onClick={() => removeOne(kw.id)}
-                  disabled={isBusy}
+                  disabled={isChecking || isRemoving}
                   className="text-xs text-muted hover:text-fall disabled:opacity-50 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 rounded-sm"
                 >
                   Remove
