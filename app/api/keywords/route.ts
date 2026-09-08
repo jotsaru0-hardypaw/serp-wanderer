@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
   const country = ((body?.country as string | undefined) || "us").toLowerCase();
   const language = ((body?.language as string | undefined) || "en").toLowerCase();
   const device = (body?.device as string | undefined) === "mobile" ? "mobile" : "desktop";
+  const tags = (body?.tags as string[] | undefined)?.map((t) => t.trim()).filter(Boolean) ?? [];
 
   if (!domainId || !term) {
     return NextResponse.json({ error: "domainId and term are required" }, { status: 400 });
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
   }
 
   const keyword = await prisma.keyword.create({
-    data: { domainId, term, country, language, device },
+    data: { domainId, term, country, language, device, tags },
   });
 
   // Check it immediately so the UI doesn't show an empty row until the next cron run.

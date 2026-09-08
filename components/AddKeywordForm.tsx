@@ -3,6 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+function parseTags(input: string): string[] {
+  return input
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+}
+
 export default function AddKeywordForm({
   domainId,
   defaultCountry = "us",
@@ -13,6 +20,7 @@ export default function AddKeywordForm({
   defaultLanguage?: string;
 }) {
   const [term, setTerm] = useState("");
+  const [tagsInput, setTagsInput] = useState("");
   const [country, setCountry] = useState(defaultCountry);
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
   const language = defaultLanguage; // per-keyword language override isn't exposed in the UI yet
@@ -29,7 +37,7 @@ export default function AddKeywordForm({
     const res = await fetch("/api/keywords", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ domainId, term, country, device, language }),
+      body: JSON.stringify({ domainId, term, country, device, language, tags: parseTags(tagsInput) }),
     });
 
     setLoading(false);
@@ -43,11 +51,14 @@ export default function AddKeywordForm({
       setError(`Added, but the first check failed: ${body.outcome.error}`);
     }
     setTerm("");
+    setTagsInput("");
     router.refresh();
   }
 
   const selectClasses =
     "rounded-md border border-line bg-surface px-2 py-2 text-sm text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40";
+  const inputClasses =
+    "rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40";
 
   return (
     <form onSubmit={submit} className="flex flex-wrap gap-2 items-start">
@@ -55,7 +66,13 @@ export default function AddKeywordForm({
         value={term}
         onChange={(e) => setTerm(e.target.value)}
         placeholder="dog joint supplements"
-        className="flex-1 min-w-[200px] rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+        className={`flex-1 min-w-[180px] ${inputClasses}`}
+      />
+      <input
+        value={tagsInput}
+        onChange={(e) => setTagsInput(e.target.value)}
+        placeholder="tags (comma separated)"
+        className={`min-w-[160px] ${inputClasses}`}
       />
       <select value={country} onChange={(e) => setCountry(e.target.value)} className={selectClasses}>
         <option value="us">US</option>

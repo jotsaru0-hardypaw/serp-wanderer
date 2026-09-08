@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
-import AddKeywordForm from "@/components/AddKeywordForm";
+import AddKeywordSection from "@/components/AddKeywordSection";
 import KeywordTable from "@/components/KeywordTable";
 import RefreshButton from "@/components/RefreshButton";
 
@@ -34,7 +34,12 @@ export default async function DomainPage({ params }: { params: { id: string } })
     term: k.term,
     country: k.country,
     device: k.device,
-    checks: k.checks.map((c) => ({ checkedAt: c.checkedAt.toISOString(), position: c.position })),
+    tags: k.tags,
+    checks: k.checks.map((c) => ({
+      checkedAt: c.checkedAt.toISOString(),
+      position: c.position,
+      url: c.url,
+    })),
   }));
 
   return (
@@ -50,7 +55,7 @@ export default async function DomainPage({ params }: { params: { id: string } })
       </div>
 
       <section>
-        <AddKeywordForm
+        <AddKeywordSection
           domainId={domain.id}
           defaultCountry={settings.defaultCountry}
           defaultLanguage={settings.defaultLanguage}

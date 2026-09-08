@@ -27,6 +27,16 @@ credits and takes longer. If you're tracking a lot of keywords or want to
 conserve credits, drop the check depth to 10 or 30 on the Settings page —
 you can change it any time, it just affects checks going forward.
 
+**Bulk add & tags:** the "Add in bulk" tab on a domain's page takes one
+keyword per line and applies the same tags/location/device to all of them.
+Bulk-added keywords aren't checked immediately (to avoid timing out on large
+batches) — hit "Refresh now" afterward to check them. Tags are free-form
+labels you can filter by using the dropdown above the keyword table.
+
+**Selecting keywords:** check the boxes next to any keywords to check or
+remove several at once — useful after a bulk add, or when cleaning up a
+batch of old ones.
+
 ## Local setup
 
 1. **Install dependencies**

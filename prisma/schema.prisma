@@ -22,6 +22,7 @@ model Keyword {
   country    String      @default("us") // Bright Data "gl" param, lowercase ISO 2-letter
   language   String      @default("en") // Bright Data "hl" param
   device     String      @default("desktop") // "desktop" | "mobile"
+  tags       String[]    @default([]) // free-form labels for filtering/grouping
   createdAt  DateTime    @default(now())
   checks     RankCheck[]
 
