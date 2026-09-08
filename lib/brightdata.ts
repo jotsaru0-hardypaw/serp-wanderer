@@ -11,7 +11,8 @@ export type OrganicResult = {
   link: string;
   title: string;
   description?: string;
-  global_rank: number;
+  rank?: number;
+  global_rank?: number;
 };
 
 export type SerpResult = {
@@ -83,8 +84,12 @@ export async function fetchSerp(params: {
     );
   }
 
-  const data = (await resp.json()) as SerpResult;
-  return { organic: data.organic ?? [] };
+  const raw = await resp.json();
+  // Bright Data has been observed returning either a plain object with an
+  // `organic` array, or that same object wrapped in a single-element array
+  // — handle both rather than assuming one shape.
+  const data = Array.isArray(raw) ? raw[0] : raw;
+  return { organic: data?.organic ?? [] };
 }
 
 /**
@@ -103,17 +108,24 @@ function bareHost(url: string): string {
 /**
  * Given SERP results and a target domain, find the best-ranking match.
  * Returns null if the domain doesn't appear in the fetched results.
+ *
+ * Position is read from `global_rank` or `rank` (Bright Data has been
+ * observed using either depending on the request), falling back to the
+ * result's position in the array if neither field is present.
  */
 export function findRanking(
   serp: SerpResult,
   targetDomain: string
 ): { position: number; url: string } | null {
   const target = targetDomain.toLowerCase().replace(/^www\./, "");
-  const match = serp.organic
-    .slice()
-    .sort((a, b) => a.global_rank - b.global_rank)
-    .find((r) => bareHost(r.link) === target);
+
+  const ranked = serp.organic.map((r, i) => ({
+    ...r,
+    position: r.global_rank ?? r.rank ?? i + 1,
+  }));
+
+  const match = ranked.sort((a, b) => a.position - b.position).find((r) => bareHost(r.link) === target);
 
   if (!match) return null;
-  return { position: match.global_rank, url: match.link };
+  return { position: match.position, url: match.link };
 }

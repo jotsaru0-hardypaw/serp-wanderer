@@ -33,10 +33,14 @@ export default function AddKeywordForm({
     });
 
     setLoading(false);
+    const body = await res.json().catch(() => ({}));
+
     if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
       setError(body.error ?? "Something went wrong");
       return;
+    }
+    if (body.outcome?.error) {
+      setError(`Added, but the first check failed: ${body.outcome.error}`);
     }
     setTerm("");
     router.refresh();

@@ -36,11 +36,22 @@ const gridCols = "grid grid-cols-[1fr_88px_84px_88px_96px_60px] items-center gap
 export default function KeywordTable({ keywords }: { keywords: KeywordRow[] }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const router = useRouter();
 
   async function checkOne(id: string) {
     setBusyId(id);
-    await fetch(`/api/keywords/${id}/check`, { method: "POST" }).catch(() => null);
+    setErrors((prev) => ({ ...prev, [id]: "" }));
+
+    const res = await fetch(`/api/keywords/${id}/check`, { method: "POST" }).catch(() => null);
+    const outcome = await res?.json().catch(() => null);
+
+    if (outcome?.error) {
+      setErrors((prev) => ({ ...prev, [id]: outcome.error }));
+    } else {
+      setErrors((prev) => ({ ...prev, [id]: "" }));
+    }
+
     setBusyId(null);
     router.refresh();
   }
@@ -77,6 +88,7 @@ export default function KeywordTable({ keywords }: { keywords: KeywordRow[] }) {
           const [latest, prev] = kw.checks;
           const isOpen = expanded === kw.id;
           const isBusy = busyId === kw.id;
+          const error = errors[kw.id];
           return (
             <div key={kw.id}>
               <div className={`${gridCols} py-3`}>
@@ -114,6 +126,12 @@ export default function KeywordTable({ keywords }: { keywords: KeywordRow[] }) {
                   Remove
                 </button>
               </div>
+
+              {error && (
+                <div className="pb-3 -mt-1">
+                  <p className="text-xs text-fall">Check failed: {error}</p>
+                </div>
+              )}
 
               {isOpen && (
                 <div className="pb-4 pl-0">
