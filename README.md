@@ -1,4 +1,4 @@
-# Rank Tracker
+# SERP Wanderer
 
 A small, self-hosted keyword rank tracker: add domains, add keywords per domain,
 and it checks Google positions via **Bright Data's SERP API** on a daily
@@ -27,15 +27,42 @@ credits and takes longer. If you're tracking a lot of keywords or want to
 conserve credits, drop the check depth to 10 or 30 on the Settings page —
 you can change it any time, it just affects checks going forward.
 
-**Bulk add & tags:** the "Add in bulk" tab on a domain's page takes one
-keyword per line and applies the same tags/location/device to all of them.
-Bulk-added keywords aren't checked immediately (to avoid timing out on large
-batches) — hit "Refresh now" afterward to check them. Tags are free-form
-labels you can filter by using the dropdown above the keyword table.
+**Bulk add & tags:** type multiple keywords separated by commas, or paste a
+column copied from Excel/Sheets (each line becomes a separate keyword) —
+either way they share the same tags/location/device. Adding more than one
+skips the instant check (to avoid timing out on a big batch) — hit "Refresh
+now" afterward to check them. Duplicates (same keyword/country/device/
+location already tracked) are silently skipped and reported back to you.
+Tags are free-form labels you can filter by using the dropdown above the
+keyword table, and manage (rename/remove across all keywords at once) via
+"Manage tags" next to it.
 
 **Selecting keywords:** check the boxes next to any keywords to check or
-remove several at once — useful after a bulk add, or when cleaning up a
-batch of old ones.
+remove several at once. Shift-click a checkbox to select every row between
+it and your last click, like file managers do.
+
+**Sorting:** click "Position" or "Last checked" in the table header to sort
+by it — first click ascending, second click descending, third click back to
+the default (creation order). Rows that haven't been checked yet always
+sort to the end regardless of direction.
+
+**Exporting:** "Export CSV" (above the table) offers two modes — "Latest
+ranking" (one row per keyword, current snapshot) or "Full history" (one row
+per recorded check, useful for charting trends elsewhere; limited to
+whatever history is loaded, the last 30 checks per keyword). Both respect
+the active tag filter.
+
+**City-level targeting:** for US keywords, you can narrow to a specific
+city (e.g. Los Angeles, Dallas) rather than just country-level — set a
+default on the Settings page or override it per keyword. This uses Google's
+`uule` location parameter under the hood; `lib/us-cities.ts` has a starter
+list of major cities and is a plain array if you want to add more.
+
+**Bright Data balance:** the Settings page shows your Bright Data account
+balance once an API key is saved. This is your paid balance (USD), not the
+free-tier monthly credit count (5,000/month on the free plan) — Bright Data
+doesn't expose that figure through a documented public API, so check it on
+their dashboard directly if you're relying on the free tier.
 
 ## Local setup
 

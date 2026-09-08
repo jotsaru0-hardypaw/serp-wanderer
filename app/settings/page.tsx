@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getSettings, maskSecret } from "@/lib/settings";
 import SettingsForm from "@/components/SettingsForm";
+import BalanceDisplay from "@/components/BalanceDisplay";
 
 export const dynamic = "force-dynamic";
 
@@ -20,11 +21,14 @@ export default async function SettingsPage() {
         </p>
       </div>
 
+      <BalanceDisplay hasApiKey={!!settings.brightdataApiKey} />
+
       <SettingsForm
         currentKeyMasked={maskSecret(settings.brightdataApiKey)}
         currentZone={settings.brightdataZone ?? ""}
         currentCountry={settings.defaultCountry}
         currentLanguage={settings.defaultLanguage}
+        currentLocation={settings.defaultLocation ?? ""}
         currentDepth={settings.maxCheckDepth}
       />
     </div>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Spinner } from "./Spinner";
 
 export default function RefreshButton({ domainId }: { domainId: string }) {
   const [loading, setLoading] = useState(false);
@@ -18,8 +19,9 @@ export default function RefreshButton({ domainId }: { domainId: string }) {
     <button
       onClick={refresh}
       disabled={loading}
-      className="rounded-md border border-line bg-surface text-sm px-3 py-1.5 text-ink hover:border-accent hover:text-accent transition-colors motion-reduce:transition-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+      className="flex items-center gap-1.5 rounded-md border border-line bg-surface text-sm px-3 py-1.5 text-ink hover:border-accent hover:text-accent transition-colors motion-reduce:transition-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
     >
+      {loading && <Spinner />}
       {loading ? "Checking all keywords…" : "Refresh now"}
     </button>
   );

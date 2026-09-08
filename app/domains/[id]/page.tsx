@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
-import AddKeywordSection from "@/components/AddKeywordSection";
+import AddKeywordForm from "@/components/AddKeywordForm";
 import KeywordTable from "@/components/KeywordTable";
 import RefreshButton from "@/components/RefreshButton";
 
@@ -34,6 +34,7 @@ export default async function DomainPage({ params }: { params: { id: string } })
     term: k.term,
     country: k.country,
     device: k.device,
+    location: k.location,
     tags: k.tags,
     checks: k.checks.map((c) => ({
       checkedAt: c.checkedAt.toISOString(),
@@ -55,15 +56,16 @@ export default async function DomainPage({ params }: { params: { id: string } })
       </div>
 
       <section>
-        <AddKeywordSection
+        <AddKeywordForm
           domainId={domain.id}
           defaultCountry={settings.defaultCountry}
           defaultLanguage={settings.defaultLanguage}
+          defaultLocation={settings.defaultLocation ?? ""}
         />
       </section>
 
       <section className="overflow-x-auto">
-        <KeywordTable keywords={keywords} maxCheckDepth={settings.maxCheckDepth} />
+        <KeywordTable keywords={keywords} maxCheckDepth={settings.maxCheckDepth} domainId={domain.id} />
       </section>
     </div>
   );

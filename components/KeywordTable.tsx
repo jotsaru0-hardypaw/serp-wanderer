@@ -4,15 +4,23 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import PositionChart, { CheckPoint } from "./PositionChart";
 import { Sparkline } from "./Sparkline";
+import { Spinner } from "./Spinner";
+import TagManager from "./TagManager";
 
 export type KeywordRow = {
   id: string;
   term: string;
   country: string;
   device: string;
+  location: string | null;
   tags: string[];
   checks: CheckPoint[];
 };
+
+function cityLabel(location: string | null): string | null {
+  if (!location) return null;
+  return location.split(",")[0] || location;
+}
 
 function PositionCell({
   current,
@@ -61,21 +69,112 @@ function PositionCell({
   );
 }
 
+type SortColumn = "position" | "lastChecked" | null;
+type SortDirection = "asc" | "desc" | null;
+
+function SortHeader({
+  label,
+  active,
+  direction,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  direction: SortDirection;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-1 text-left hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 rounded-sm"
+    >
+      {label}
+      {active && direction && <span className="text-[10px]">{direction === "asc" ? "▲" : "▼"}</span>}
+    </button>
+  );
+}
+
+function toCsv(rows: KeywordRow[]): string {
+  const header = ["Keyword", "Tags", "Country", "City", "Device", "Position", "Ranking URL", "Last checked"];
+  const lines = rows.map((kw) => {
+    const [latest] = kw.checks;
+    return [
+      kw.term,
+      kw.tags.join("; "),
+      kw.country.toUpperCase(),
+      cityLabel(kw.location) ?? "",
+      kw.device,
+      latest?.position ?? "",
+      latest?.url ?? "",
+      latest ? new Date(latest.checkedAt).toISOString() : "",
+    ]
+      .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+      .join(",");
+  });
+  return [header.join(","), ...lines].join("\n");
+}
+
+// One row per recorded check, not just the latest — useful for charting
+// trends elsewhere. Limited to whatever history is loaded (the last 30
+// checks per keyword), same as the in-app trend chart.
+function toFullHistoryCsv(rows: KeywordRow[]): string {
+  const header = ["Keyword", "Tags", "Country", "City", "Device", "Date", "Position", "Ranking URL"];
+  const lines: string[] = [];
+  rows.forEach((kw) => {
+    kw.checks.forEach((c) => {
+      lines.push(
+        [
+          kw.term,
+          kw.tags.join("; "),
+          kw.country.toUpperCase(),
+          cityLabel(kw.location) ?? "",
+          kw.device,
+          new Date(c.checkedAt).toISOString(),
+          c.position ?? "",
+          c.url ?? "",
+        ]
+          .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+          .join(",")
+      );
+    });
+  });
+  return [header.join(","), ...lines].join("\n");
+}
+
+function downloadCsv(csv: string, filename: string) {
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 const gridCols = "grid grid-cols-[20px_1fr_100px_84px_88px_96px_60px] items-center gap-3";
 
 export default function KeywordTable({
   keywords,
   maxCheckDepth,
+  domainId,
 }: {
   keywords: KeywordRow[];
   maxCheckDepth: number;
+  domainId: string;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [lastClickedIndex, setLastClickedIndex] = useState<number | null>(null);
   const [tagFilter, setTagFilter] = useState<string>("all");
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [tagManagerOpen, setTagManagerOpen] = useState(false);
+  const [sortColumn, setSortColumn] = useState<SortColumn>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const router = useRouter();
 
   const allTags = useMemo(() => {
@@ -84,20 +183,67 @@ export default function KeywordTable({
     return Array.from(set).sort();
   }, [keywords]);
 
-  const visible = useMemo(
+  const filtered = useMemo(
     () => (tagFilter === "all" ? keywords : keywords.filter((k) => k.tags.includes(tagFilter))),
     [keywords, tagFilter]
   );
 
+  const visible = useMemo(() => {
+    if (!sortColumn || !sortDirection) return filtered;
+    const withValue = filtered.map((kw) => {
+      const [latest] = kw.checks;
+      const value =
+        sortColumn === "position"
+          ? latest?.position ?? null
+          : latest
+          ? new Date(latest.checkedAt).getTime()
+          : null;
+      return { kw, value };
+    });
+    // Rows with no value (never checked) always sort to the end, regardless of direction.
+    withValue.sort((a, b) => {
+      if (a.value == null && b.value == null) return 0;
+      if (a.value == null) return 1;
+      if (b.value == null) return -1;
+      return sortDirection === "asc" ? a.value - b.value : b.value - a.value;
+    });
+    return withValue.map((r) => r.kw);
+  }, [filtered, sortColumn, sortDirection]);
+
   const allVisibleSelected = visible.length > 0 && visible.every((k) => selected.has(k.id));
 
-  function toggleOne(id: string) {
+  function cycleSort(column: Exclude<SortColumn, null>) {
+    if (sortColumn !== column) {
+      setSortColumn(column);
+      setSortDirection("asc");
+      return;
+    }
+    if (sortDirection === "asc") {
+      setSortDirection("desc");
+    } else if (sortDirection === "desc") {
+      setSortColumn(null);
+      setSortDirection(null);
+    } else {
+      setSortDirection("asc");
+    }
+  }
+
+  function toggleOne(id: string, index: number, shiftKey: boolean) {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (shiftKey && lastClickedIndex != null) {
+        const [start, end] = [lastClickedIndex, index].sort((a, b) => a - b);
+        for (let i = start; i <= end; i++) {
+          next.add(visible[i].id);
+        }
+      } else if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
+    setLastClickedIndex(index);
   }
 
   function toggleAll() {
@@ -150,6 +296,13 @@ export default function KeywordTable({
     router.refresh();
   }
 
+  function exportCsv(mode: "latest" | "history") {
+    const csv = mode === "latest" ? toCsv(visible) : toFullHistoryCsv(visible);
+    const suffix = mode === "latest" ? "latest" : "history";
+    downloadCsv(csv, `keywords-${suffix}-${new Date().toISOString().slice(0, 10)}.csv`);
+    setExportMenuOpen(false);
+  }
+
   if (keywords.length === 0) {
     return (
       <p className="text-sm text-muted py-6">
@@ -160,47 +313,88 @@ export default function KeywordTable({
 
   return (
     <div className="min-w-[640px]">
-      <div className="flex items-center justify-between pb-2">
-        {allTags.length > 0 ? (
-          <select
-            value={tagFilter}
-            onChange={(e) => setTagFilter(e.target.value)}
-            className="text-xs rounded-md border border-line bg-surface px-2 py-1 text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-          >
-            <option value="all">All tags</option>
-            {allTags.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <span />
-        )}
+      <div className="flex items-center justify-between pb-2 gap-3">
+        <div className="flex items-center gap-3">
+          {allTags.length > 0 ? (
+            <select
+              value={tagFilter}
+              onChange={(e) => setTagFilter(e.target.value)}
+              className="text-xs rounded-md border border-line bg-surface px-2 py-1 text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+            >
+              <option value="all">All tags</option>
+              {allTags.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span />
+          )}
+          {allTags.length > 0 && (
+            <button onClick={() => setTagManagerOpen(true)} className="text-xs text-muted hover:text-accent">
+              Manage tags
+            </button>
+          )}
+        </div>
 
-        {selected.size > 0 && (
-          <div className="flex items-center gap-3 text-xs">
-            <span className="text-muted">{selected.size} selected</span>
+        <div className="flex items-center gap-3 text-xs">
+          {selected.size > 0 && (
+            <>
+              <span className="text-muted">{selected.size} selected</span>
+              <button
+                onClick={() => bulkAction("check")}
+                disabled={bulkBusy}
+                className="flex items-center gap-1 text-accent hover:underline disabled:opacity-50"
+              >
+                {bulkBusy && <Spinner />}
+                Check selected
+              </button>
+              <button
+                onClick={() => bulkAction("remove")}
+                disabled={bulkBusy}
+                className="text-fall hover:underline disabled:opacity-50"
+              >
+                Remove selected
+              </button>
+              <button onClick={() => setSelected(new Set())} className="text-muted hover:text-ink">
+                Clear
+              </button>
+              <span className="text-line">|</span>
+            </>
+          )}
+          <div className="relative">
             <button
-              onClick={() => bulkAction("check")}
-              disabled={bulkBusy}
-              className="text-accent hover:underline disabled:opacity-50"
+              onClick={() => setExportMenuOpen((v) => !v)}
+              className="text-muted hover:text-accent"
             >
-              {bulkBusy ? "Working…" : "Check selected"}
+              Export CSV ▾
             </button>
-            <button
-              onClick={() => bulkAction("remove")}
-              disabled={bulkBusy}
-              className="text-fall hover:underline disabled:opacity-50"
-            >
-              Remove selected
-            </button>
-            <button onClick={() => setSelected(new Set())} className="text-muted hover:text-ink">
-              Clear
-            </button>
+            {exportMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setExportMenuOpen(false)} />
+                <div className="absolute right-0 mt-1 w-48 rounded-md border border-line bg-surface shadow-sm z-20 py-1">
+                  <button
+                    onClick={() => exportCsv("latest")}
+                    className="block w-full text-left px-3 py-1.5 text-xs text-ink hover:bg-paper"
+                  >
+                    Latest ranking
+                  </button>
+                  <button
+                    onClick={() => exportCsv("history")}
+                    className="block w-full text-left px-3 py-1.5 text-xs text-ink hover:bg-paper"
+                  >
+                    Full history
+                  </button>
+                </div>
+              </>
+            )}
           </div>
-        )}
+        </div>
       </div>
+
+      {tagManagerOpen && <TagManager domainId={domainId} onClose={() => setTagManagerOpen(false)} />}
+
 
       <div className={`${gridCols} border-b border-line pb-2 text-xs text-muted`}>
         <input
@@ -211,26 +405,38 @@ export default function KeywordTable({
           aria-label="Select all"
         />
         <span>Keyword</span>
-        <span>Position</span>
+        <SortHeader
+          label="Position"
+          active={sortColumn === "position"}
+          direction={sortColumn === "position" ? sortDirection : null}
+          onClick={() => cycleSort("position")}
+        />
         <span>Trend</span>
-        <span>Last checked</span>
+        <SortHeader
+          label="Last checked"
+          active={sortColumn === "lastChecked"}
+          direction={sortColumn === "lastChecked" ? sortDirection : null}
+          onClick={() => cycleSort("lastChecked")}
+        />
         <span />
         <span />
       </div>
 
       <div className="divide-y divide-line">
-        {visible.map((kw) => {
+        {visible.map((kw, index) => {
           const [latest, prev] = kw.checks;
           const isOpen = expanded === kw.id;
           const isBusy = busyId === kw.id;
           const error = errors[kw.id];
+          const city = cityLabel(kw.location);
           return (
             <div key={kw.id}>
               <div className={`${gridCols} py-3`}>
                 <input
                   type="checkbox"
                   checked={selected.has(kw.id)}
-                  onChange={() => toggleOne(kw.id)}
+                  onClick={(e) => toggleOne(kw.id, index, e.shiftKey)}
+                  onChange={() => {}}
                   className="accent-accent"
                   aria-label={`Select ${kw.term}`}
                 />
@@ -241,7 +447,8 @@ export default function KeywordTable({
                 >
                   <div className="text-sm text-ink">{kw.term}</div>
                   <div className="text-xs text-muted">
-                    {kw.country.toUpperCase()} · {kw.device}
+                    {kw.country.toUpperCase()}
+                    {city ? ` · ${city}` : ""} · {kw.device}
                   </div>
                   {kw.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1">
@@ -273,9 +480,10 @@ export default function KeywordTable({
                 <button
                   onClick={() => checkOne(kw.id)}
                   disabled={isBusy}
-                  className="text-xs text-muted hover:text-accent disabled:opacity-50 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 rounded-sm"
+                  className="flex items-center gap-1 text-xs text-muted hover:text-accent disabled:opacity-50 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 rounded-sm"
                 >
-                  {isBusy ? "…" : "Check"}
+                  {isBusy && <Spinner />}
+                  {isBusy ? "" : "Check"}
                 </button>
 
                 <button

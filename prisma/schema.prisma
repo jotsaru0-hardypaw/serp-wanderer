@@ -22,6 +22,7 @@ model Keyword {
   country    String      @default("us") // Bright Data "gl" param, lowercase ISO 2-letter
   language   String      @default("en") // Bright Data "hl" param
   device     String      @default("desktop") // "desktop" | "mobile"
+  location   String?     // optional city-level targeting — Google Ads canonical geo-target name, e.g. "Los Angeles,California,United States"
   tags       String[]    @default([]) // free-form labels for filtering/grouping
   createdAt  DateTime    @default(now())
   checks     RankCheck[]
@@ -50,6 +51,7 @@ model Settings {
   brightdataZone   String?
   defaultCountry   String   @default("us")
   defaultLanguage  String   @default("en")
+  defaultLocation  String?  // optional default city (US only for now) — same canonical-name format as Keyword.location
   maxCheckDepth    Int      @default(100) // how many Google result positions to check (10, 30, 50, or 100)
   updatedAt        DateTime @updatedAt
 }

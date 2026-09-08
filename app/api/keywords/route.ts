@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
   const country = ((body?.country as string | undefined) || "us").toLowerCase();
   const language = ((body?.language as string | undefined) || "en").toLowerCase();
   const device = (body?.device as string | undefined) === "mobile" ? "mobile" : "desktop";
+  const location = (body?.location as string | undefined)?.trim() || null;
   const tags = (body?.tags as string[] | undefined)?.map((t) => t.trim()).filter(Boolean) ?? [];
 
   if (!domainId || !term) {
@@ -24,8 +25,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Domain not found" }, { status: 404 });
   }
 
+  const existing = await prisma.keyword.findFirst({
+    where: { domainId, country, device, location, term: { equals: term, mode: "insensitive" } },
+  });
+  if (existing) {
+    return NextResponse.json({ duplicate: true, keyword: existing }, { status: 200 });
+  }
+
   const keyword = await prisma.keyword.create({
-    data: { domainId, term, country, language, device, tags },
+    data: { domainId, term, country, language, device, location, tags },
   });
 
   // Check it immediately so the UI doesn't show an empty row until the next cron run.

@@ -2,24 +2,28 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { US_CITIES } from "@/lib/us-cities";
 
 export default function SettingsForm({
   currentKeyMasked,
   currentZone,
   currentCountry,
   currentLanguage,
+  currentLocation,
   currentDepth,
 }: {
   currentKeyMasked: string | null;
   currentZone: string;
   currentCountry: string;
   currentLanguage: string;
+  currentLocation: string;
   currentDepth: number;
 }) {
   const [apiKey, setApiKey] = useState("");
   const [zone, setZone] = useState(currentZone);
   const [country, setCountry] = useState(currentCountry);
   const [language, setLanguage] = useState(currentLanguage);
+  const [location, setLocation] = useState(currentLocation);
   const [depth, setDepth] = useState(currentDepth);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -40,6 +44,7 @@ export default function SettingsForm({
         brightdataZone: zone,
         defaultCountry: country,
         defaultLanguage: language,
+        defaultLocation: country === "us" ? location : "",
         maxCheckDepth: depth,
       }),
     });
@@ -130,6 +135,32 @@ export default function SettingsForm({
           </select>
         </div>
       </div>
+
+      {country === "us" && (
+        <div>
+          <label className={labelClasses} htmlFor="city">
+            Default city (optional, US only)
+          </label>
+          <select
+            id="city"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            className={inputClasses}
+          >
+            <option value="">No specific city (country-level)</option>
+            {US_CITIES.map((c) => (
+              <option key={c.canonicalName} value={c.canonicalName}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+          <p className={helpClasses}>
+            Narrows results to how Google looks from that specific city, rather than the US in
+            general — useful for local SEO.
+          </p>
+        </div>
+      )}
+
       <p className={helpClasses}>
         Used to prefill new keywords — you can still override the location per keyword when you
         add it.

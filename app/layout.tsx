@@ -16,7 +16,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Rank Tracker",
+  title: "SERP Wanderer",
   description: "Keyword rank tracking powered by Bright Data's SERP API",
 };
 
@@ -27,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <header className="border-b border-line">
           <div className="mx-auto max-w-4xl px-6 py-4 flex items-center justify-between">
             <a href="/" className="text-[15px] font-semibold tracking-tight text-ink">
-              Rank Tracker
+              SERP Wanderer
             </a>
             <a href="/settings" className="text-sm text-muted hover:text-accent">
               Settings

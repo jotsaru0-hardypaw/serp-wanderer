@@ -44,6 +44,7 @@ export async function checkKeyword(keywordId: string): Promise<CheckOutcome> {
         country: keyword.country,
         language: keyword.language,
         device: keyword.device as "desktop" | "mobile",
+        location: keyword.location,
         page,
       });
 

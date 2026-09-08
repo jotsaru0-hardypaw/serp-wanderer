@@ -37,6 +37,7 @@ export async function fetchSerp(params: {
   country: string; // "gl" — e.g. "us"
   language: string; // "hl" — e.g. "en"
   device?: "desktop" | "mobile";
+  location?: string | null; // optional city-level targeting (Google Ads canonical geo-target name), sent as Google's `uule` param
   page?: number; // 0-indexed page of results; page 1 = results 10-19, etc.
 }): Promise<SerpResult> {
   const { brightdataApiKey: apiKey, brightdataZone: zone } = await getSettings();
@@ -53,6 +54,9 @@ export async function fetchSerp(params: {
   });
   if (params.device === "mobile") {
     searchParams.set("brd_mobile", "1");
+  }
+  if (params.location) {
+    searchParams.set("uule", params.location);
   }
   if (params.page && params.page > 0) {
     searchParams.set("start", String(params.page * 10));

@@ -8,6 +8,7 @@ export type ResolvedSettings = {
   brightdataZone: string | null;
   defaultCountry: string;
   defaultLanguage: string;
+  defaultLocation: string | null;
   maxCheckDepth: number;
 };
 
@@ -24,6 +25,7 @@ export async function getSettings(): Promise<ResolvedSettings> {
     brightdataZone: row?.brightdataZone || process.env.BRIGHTDATA_SERP_ZONE || null,
     defaultCountry: row?.defaultCountry || "us",
     defaultLanguage: row?.defaultLanguage || "en",
+    defaultLocation: row?.defaultLocation || null,
     maxCheckDepth: row?.maxCheckDepth && VALID_DEPTHS.includes(row.maxCheckDepth) ? row.maxCheckDepth : 100,
   };
 }
@@ -38,6 +40,7 @@ export async function updateSettings(input: {
   brightdataZone?: string;
   defaultCountry?: string;
   defaultLanguage?: string;
+  defaultLocation?: string;
   maxCheckDepth?: number;
 }) {
   const existing = await prisma.settings.findUnique({ where: { id: SETTINGS_ID } });
@@ -51,6 +54,7 @@ export async function updateSettings(input: {
       brightdataZone: input.brightdataZone || null,
       defaultCountry: input.defaultCountry || "us",
       defaultLanguage: input.defaultLanguage || "en",
+      defaultLocation: input.defaultLocation || null,
       maxCheckDepth: depth ?? 100,
     },
     update: {
@@ -58,6 +62,8 @@ export async function updateSettings(input: {
       brightdataZone: input.brightdataZone ? input.brightdataZone : existing?.brightdataZone,
       defaultCountry: input.defaultCountry || existing?.defaultCountry || "us",
       defaultLanguage: input.defaultLanguage || existing?.defaultLanguage || "en",
+      // Explicit empty string clears the default city; undefined (field omitted) leaves it unchanged.
+      defaultLocation: input.defaultLocation !== undefined ? input.defaultLocation || null : existing?.defaultLocation,
       maxCheckDepth: depth ?? existing?.maxCheckDepth ?? 100,
     },
   });
