@@ -58,7 +58,7 @@ export default async function DomainPage({ params }: { params: { id: string } })
       </section>
 
       <section className="overflow-x-auto">
-        <KeywordTable keywords={keywords} />
+        <KeywordTable keywords={keywords} maxCheckDepth={settings.maxCheckDepth} />
       </section>
     </div>
   );

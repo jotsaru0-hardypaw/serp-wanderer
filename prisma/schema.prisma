@@ -49,5 +49,6 @@ model Settings {
   brightdataZone   String?
   defaultCountry   String   @default("us")
   defaultLanguage  String   @default("en")
+  maxCheckDepth    Int      @default(100) // how many Google result positions to check (10, 30, 50, or 100)
   updatedAt        DateTime @updatedAt
 }

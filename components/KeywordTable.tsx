@@ -13,9 +13,17 @@ export type KeywordRow = {
   checks: CheckPoint[];
 };
 
-function PositionCell({ current, previous }: { current: number | null; previous: number | null }) {
+function PositionCell({
+  current,
+  previous,
+  maxCheckDepth,
+}: {
+  current: number | null;
+  previous: number | null;
+  maxCheckDepth: number;
+}) {
   if (current == null) {
-    return <span className="text-sm text-muted">Outside top 10</span>;
+    return <span className="text-sm text-muted">Outside top {maxCheckDepth}</span>;
   }
   const delta = previous != null ? previous - current : null; // positive = improved
 
@@ -33,7 +41,13 @@ function PositionCell({ current, previous }: { current: number | null; previous:
 
 const gridCols = "grid grid-cols-[1fr_88px_84px_88px_96px_60px] items-center gap-3";
 
-export default function KeywordTable({ keywords }: { keywords: KeywordRow[] }) {
+export default function KeywordTable({
+  keywords,
+  maxCheckDepth,
+}: {
+  keywords: KeywordRow[];
+  maxCheckDepth: number;
+}) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -102,7 +116,11 @@ export default function KeywordTable({ keywords }: { keywords: KeywordRow[] }) {
                   </div>
                 </button>
 
-                <PositionCell current={latest?.position ?? null} previous={prev?.position ?? null} />
+                <PositionCell
+                  current={latest?.position ?? null}
+                  previous={prev?.position ?? null}
+                  maxCheckDepth={maxCheckDepth}
+                />
 
                 <Sparkline values={kw.checks.slice().reverse().map((c) => c.position)} />
 
@@ -135,7 +153,7 @@ export default function KeywordTable({ keywords }: { keywords: KeywordRow[] }) {
 
               {isOpen && (
                 <div className="pb-4 pl-0">
-                  <PositionChart checks={kw.checks} />
+                  <PositionChart checks={kw.checks} maxCheckDepth={maxCheckDepth} />
                 </div>
               )}
             </div>

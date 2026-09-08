@@ -1,9 +1,10 @@
 // Thin client around Bright Data's SERP API (https://docs.brightdata.com/scraping-automation/serp-api)
 //
-// Uses data_format=parsed_light, which returns the top ~10 organic Google results
-// per request as clean JSON — no HTML parsing needed. Position beyond page 1 would
-// require paging with the Google `start` param (start=10, 20, ...), which this
-// client supports via the `page` argument if you want to extend it later.
+// Uses data_format=parsed_light, which returns ~10 organic Google results per
+// request as clean JSON — no HTML parsing needed. Checking beyond position 10
+// means paging with Google's `start` param (start=10, 20, ...) across
+// multiple requests — see checkKeyword in ./rank.ts, which drives this via
+// the `page` argument below.
 
 import { getSettings } from "./settings";
 
@@ -110,18 +111,21 @@ function bareHost(url: string): string {
  * Returns null if the domain doesn't appear in the fetched results.
  *
  * Position is read from `global_rank` or `rank` (Bright Data has been
- * observed using either depending on the request), falling back to the
- * result's position in the array if neither field is present.
+ * observed using either depending on the request). If neither field is
+ * present, falls back to the result's position in the array, offset by
+ * `pageOffset` so page 2+ results still number correctly (11, 12, ... not
+ * restarting at 1).
  */
 export function findRanking(
   serp: SerpResult,
-  targetDomain: string
+  targetDomain: string,
+  pageOffset = 0
 ): { position: number; url: string } | null {
   const target = targetDomain.toLowerCase().replace(/^www\./, "");
 
   const ranked = serp.organic.map((r, i) => ({
     ...r,
-    position: r.global_rank ?? r.rank ?? i + 1,
+    position: r.global_rank ?? r.rank ?? pageOffset + i + 1,
   }));
 
   const match = ranked.sort((a, b) => a.position - b.position).find((r) => bareHost(r.link) === target);

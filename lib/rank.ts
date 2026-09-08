@@ -1,5 +1,6 @@
 import { prisma } from "./db";
 import { fetchSerp, findRanking, BrightDataError } from "./brightdata";
+import { getSettings } from "./settings";
 
 export type CheckOutcome = {
   keywordId: string;
@@ -9,10 +10,18 @@ export type CheckOutcome = {
   error?: string;
 };
 
+// Small pause between page requests for the same keyword — gentle on rate
+// limits, and pointless to remove since each request already takes ~1s+.
+const PAGE_DELAY_MS = 300;
+
 /**
  * Check a single keyword against Bright Data and persist the result.
  * Never throws — errors are captured in the returned outcome so a batch
  * run can continue past individual failures.
+ *
+ * Pages through Google's results (10 per page) up to the configured
+ * maxCheckDepth, stopping as soon as a match is found — so a keyword
+ * ranking #3 only costs one request, not ten.
  */
 export async function checkKeyword(keywordId: string): Promise<CheckOutcome> {
   const keyword = await prisma.keyword.findUnique({
@@ -24,14 +33,29 @@ export async function checkKeyword(keywordId: string): Promise<CheckOutcome> {
   }
 
   try {
-    const serp = await fetchSerp({
-      keyword: keyword.term,
-      country: keyword.country,
-      language: keyword.language,
-      device: keyword.device as "desktop" | "mobile",
-    });
+    const { maxCheckDepth } = await getSettings();
+    const maxPages = Math.max(1, Math.ceil(maxCheckDepth / 10));
 
-    const result = findRanking(serp, keyword.domain.name);
+    let result: { position: number; url: string } | null = null;
+
+    for (let page = 0; page < maxPages; page++) {
+      const serp = await fetchSerp({
+        keyword: keyword.term,
+        country: keyword.country,
+        language: keyword.language,
+        device: keyword.device as "desktop" | "mobile",
+        page,
+      });
+
+      result = findRanking(serp, keyword.domain.name, page * 10);
+      if (result) break; // found it — no need to check further pages
+
+      if (serp.organic.length === 0) break; // Google has no more results to page through
+
+      if (page < maxPages - 1) {
+        await new Promise((r) => setTimeout(r, PAGE_DELAY_MS));
+      }
+    }
 
     await prisma.rankCheck.create({
       data: {

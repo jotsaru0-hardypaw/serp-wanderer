@@ -9,22 +9,23 @@ around Bright Data instead of SerpBear's other scraper integrations.
 ## How it works
 
 - Each keyword check calls Bright Data's SERP API (`data_format: parsed_light`),
-  which returns the top ~10 Google organic results as clean JSON — no HTML
-  parsing.
-- The app compares each result's hostname against your tracked domain and
-  records the matching position (or `null` if your domain isn't in the top
-  results returned).
+  which returns ~10 Google organic results per request as clean JSON — no
+  HTML parsing.
+- The app compares each result's hostname against your tracked domain. If
+  your domain isn't found on the first page, it pages through further
+  requests (`start=10`, `20`, ...) up to the **check depth** configured on
+  the Settings page (10 / 30 / 50 / 100 — 100 by default), stopping the
+  moment a match is found. A keyword ranking #3 only ever costs one Bright
+  Data request; a keyword that isn't ranking at all costs one request per
+  page of depth configured (worst case, 10 requests at the 100 setting).
 - Every check is stored as a row in `RankCheck`, so the dashboard can show a
   history/trend per keyword, not just the latest number.
 
-**Note on depth:** Bright Data's `parsed_light` format returns page 1 (~10
-results). If a keyword ranks beyond position 10, it'll show as "Not found"
-rather than its true position. `lib/brightdata.ts` already supports paging
-via the `page` argument (uses Google's `start` param) if you want to extend
-`checkKeyword` to check further pages for specific keywords — just uncomment
-and wire that in if you need deeper visibility for a subset of terms. Going
-deeper multiplies the number of API calls (and cost) per keyword, so it's
-left as an opt-in rather than default behavior.
+**Cost and time tradeoff:** checking deeper means more Bright Data requests
+per keyword for anything that isn't already ranking well, which uses more
+credits and takes longer. If you're tracking a lot of keywords or want to
+conserve credits, drop the check depth to 10 or 30 on the Settings page —
+you can change it any time, it just affects checks going forward.
 
 ## Local setup
 
@@ -70,11 +71,13 @@ left as an opt-in rather than default behavior.
 3. `vercel.json` already defines a daily cron (`0 6 * * *` — 6am UTC) hitting
    `/api/cron/refresh`. Vercel automatically sends your `CRON_SECRET` as the
    `Authorization` header on that scheduled call — no extra config needed.
-4. **Free (Hobby) plan caveat:** Hobby functions time out at 10 seconds, which
-   may not be enough to check many keywords sequentially in one run. If you
-   have more than a handful of keywords, either upgrade to Pro (function
-   timeout configurable up to 300s — already set via `maxDuration` in the
-   route) or use Option B below for the scheduled check.
+4. **Free (Hobby) plan caveat:** Hobby functions time out at 10 seconds
+   regardless of `maxDuration`. With the default 100-position check depth, a
+   *single* keyword check that isn't ranking at all can take longer than
+   that on its own — not just the scheduled bulk refresh. If you're on
+   Hobby, either drop the check depth to 10 or 30 on the Settings page, or
+   upgrade to Pro (which honors the `maxDuration` values already set in the
+   routes, up to 300s).
 
 ### Option B — Render
 

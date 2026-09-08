@@ -4,7 +4,13 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 
 export type CheckPoint = { checkedAt: string; position: number | null };
 
-export default function PositionChart({ checks }: { checks: CheckPoint[] }) {
+export default function PositionChart({
+  checks,
+  maxCheckDepth = 100,
+}: {
+  checks: CheckPoint[];
+  maxCheckDepth?: number;
+}) {
   // Oldest first for a left-to-right timeline; missing positions render as gaps.
   const data = checks
     .slice()
@@ -27,7 +33,7 @@ export default function PositionChart({ checks }: { checks: CheckPoint[] }) {
           {/* Rank charts read best inverted — position 1 at the top */}
           <YAxis reversed tick={{ fontSize: 11, fill: "#5F6F66" }} stroke="#E1E6E1" allowDecimals={false} />
           <Tooltip
-            formatter={(value) => (value == null ? "Outside top 10" : `#${value}`)}
+            formatter={(value) => (value == null ? `Outside top ${maxCheckDepth}` : `#${value}`)}
             contentStyle={{ fontSize: 12, borderRadius: 6, borderColor: "#E1E6E1" }}
           />
           <Line

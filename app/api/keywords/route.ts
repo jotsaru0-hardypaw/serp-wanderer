@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { checkKeyword } from "@/lib/rank";
 
+// A deep check (checking further than the top 10) pages through multiple
+// Bright Data requests, which can take longer than the default timeout.
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const domainId = body?.domainId as string | undefined;

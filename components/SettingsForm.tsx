@@ -8,16 +8,19 @@ export default function SettingsForm({
   currentZone,
   currentCountry,
   currentLanguage,
+  currentDepth,
 }: {
   currentKeyMasked: string | null;
   currentZone: string;
   currentCountry: string;
   currentLanguage: string;
+  currentDepth: number;
 }) {
   const [apiKey, setApiKey] = useState("");
   const [zone, setZone] = useState(currentZone);
   const [country, setCountry] = useState(currentCountry);
   const [language, setLanguage] = useState(currentLanguage);
+  const [depth, setDepth] = useState(currentDepth);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +40,7 @@ export default function SettingsForm({
         brightdataZone: zone,
         defaultCountry: country,
         defaultLanguage: language,
+        maxCheckDepth: depth,
       }),
     });
 
@@ -130,6 +134,28 @@ export default function SettingsForm({
         Used to prefill new keywords — you can still override the location per keyword when you
         add it.
       </p>
+
+      <div>
+        <label className={labelClasses} htmlFor="depth">
+          Check depth
+        </label>
+        <select
+          id="depth"
+          value={depth}
+          onChange={(e) => setDepth(Number(e.target.value))}
+          className={inputClasses}
+        >
+          <option value={10}>Top 10 (1 request per check)</option>
+          <option value={30}>Top 30 (up to 3 requests per check)</option>
+          <option value={50}>Top 50 (up to 5 requests per check)</option>
+          <option value={100}>Top 100 (up to 10 requests per check)</option>
+        </select>
+        <p className={helpClasses}>
+          How far into Google's results to look for your domain. Stops early the moment it's
+          found — the "up to" figure is only the worst case, when a keyword isn't ranking at all.
+          Deeper checking uses more Bright Data credits per keyword.
+        </p>
+      </div>
 
       <div className="flex items-center gap-3">
         <button

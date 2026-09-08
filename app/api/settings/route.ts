@@ -8,6 +8,7 @@ export async function GET() {
     brightdataZone: settings.brightdataZone, // zone names aren't secret, safe to show in full
     defaultCountry: settings.defaultCountry,
     defaultLanguage: settings.defaultLanguage,
+    maxCheckDepth: settings.maxCheckDepth,
   });
 }
 
@@ -22,6 +23,7 @@ export async function POST(req: NextRequest) {
     brightdataZone: (body.brightdataZone as string | undefined)?.trim(),
     defaultCountry: (body.defaultCountry as string | undefined)?.trim().toLowerCase(),
     defaultLanguage: (body.defaultLanguage as string | undefined)?.trim().toLowerCase(),
+    maxCheckDepth: Number(body.maxCheckDepth) || undefined,
   });
 
   return NextResponse.json({ ok: true });

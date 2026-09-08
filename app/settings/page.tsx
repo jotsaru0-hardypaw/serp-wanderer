@@ -25,6 +25,7 @@ export default async function SettingsPage() {
         currentZone={settings.brightdataZone ?? ""}
         currentCountry={settings.defaultCountry}
         currentLanguage={settings.defaultLanguage}
+        currentDepth={settings.maxCheckDepth}
       />
     </div>
   );

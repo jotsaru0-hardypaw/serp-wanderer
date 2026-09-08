@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { checkKeyword } from "@/lib/rank";
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
   const keywords = await prisma.keyword.findMany({
