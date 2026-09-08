@@ -27,7 +27,7 @@ export default function PositionChart({ checks }: { checks: CheckPoint[] }) {
           {/* Rank charts read best inverted — position 1 at the top */}
           <YAxis reversed tick={{ fontSize: 11, fill: "#5F6F66" }} stroke="#E1E6E1" allowDecimals={false} />
           <Tooltip
-            formatter={(value: number | null) => (value == null ? "Outside top 10" : `#${value}`)}
+            formatter={(value) => (value == null ? "Outside top 10" : `#${value}`)}
             contentStyle={{ fontSize: 12, borderRadius: 6, borderColor: "#E1E6E1" }}
           />
           <Line
