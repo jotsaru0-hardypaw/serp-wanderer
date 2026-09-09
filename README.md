@@ -153,6 +153,33 @@ tab stays open, not just on page load.
 Either way, you can also just click **"Refresh now"** on a domain's page any
 time — it doesn't wait for the schedule.
 
+## Search Console
+
+Separate from Bright Data rank checks — this pulls clicks, impressions, CTR,
+and average position directly from Google, including Discover performance
+(traffic from Google's Discover feed, not regular search).
+
+Each account connects its own Google Search Console using its own Google
+Cloud OAuth client — same "bring your own credentials" pattern as Bright
+Data, entered on the Settings page.
+
+**One-time setup (per Google account you want to connect):**
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com), create or pick a project.
+2. **APIs & Services → Library** → search "Search Console API" → Enable.
+3. **APIs & Services → OAuth consent screen** → configure it (External is fine for personal/small-team use), add the `.../auth/webmasters.readonly` scope, and add yourself as a test user if it's in Testing mode.
+4. **APIs & Services → Credentials → Create Credentials → OAuth Client ID** → Application type: **Web application** → under Authorized redirect URIs, add:
+   ```
+   https://your-deployed-domain.com/api/google/callback
+   ```
+   (and `http://localhost:3000/api/google/callback` too if you want to test locally).
+5. Copy the Client ID and Client Secret into Settings → Search Console in the app, save, then click **Connect Search Console**.
+6. Pick which verified property to track from the list Google returns.
+
+**Note on the "unverified app" warning:** while your OAuth consent screen is in Testing mode (the default), Google shows an interstitial warning during the connect step since the app hasn't been through Google's verification review. For personal or small-team use this is expected — click "Advanced" → "Go to (your app name)" to proceed. It only affects the consent screen's appearance, not functionality.
+
+**Discover/News data limitation (from Google, not this app):** Google's API doesn't support grouping Discover or News data by search query — only by page, date, country, or device. The insights page switches away from "By query" automatically when you pick Discover or News, since Google's API rejects that combination outright.
+
 ## Extending
 
 - **More history / different chart range:** `checks` are fetched with

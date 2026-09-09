@@ -49,6 +49,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             {user && (
               <div className="flex items-center gap-4">
                 <span className="text-sm text-muted">{user.username}</span>
+                <a href="/search-console" className="text-sm text-muted hover:text-accent">
+                  Search Console
+                </a>
                 <a href="/settings" className="text-sm text-muted hover:text-accent">
                   Settings
                 </a>

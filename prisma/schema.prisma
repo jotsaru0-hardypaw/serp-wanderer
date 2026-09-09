@@ -8,13 +8,14 @@ datasource db {
 }
 
 model User {
-  id           String     @id @default(cuid())
-  username     String     @unique
-  passwordHash String
-  createdAt    DateTime   @default(now())
-  domains      Domain[]
-  settings     Settings?
-  sessions     Session[]
+  id               String            @id @default(cuid())
+  username         String            @unique
+  passwordHash     String
+  createdAt        DateTime          @default(now())
+  domains          Domain[]
+  settings         Settings?
+  sessions         Session[]
+  googleConnection GoogleConnection?
 }
 
 // A session token stored in an httpOnly cookie. Deleting the row logs the
@@ -67,6 +68,23 @@ model RankCheck {
   checkedAt  DateTime @default(now())
 
   @@index([keywordId, checkedAt])
+}
+
+// One row per user holding their own Google OAuth client credentials (from
+// their own Google Cloud project — same pattern as Bright Data) and the
+// resulting tokens once they connect Search Console.
+model GoogleConnection {
+  id           String    @id @default(cuid())
+  userId       String    @unique
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId     String?
+  clientSecret String?
+  accessToken  String?
+  refreshToken String?
+  tokenExpiry  DateTime?
+  siteUrl      String?   // the Search Console property chosen after connecting, e.g. "sc-domain:hardypaw.com"
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
 
 // One row per user, holding their own Bright Data credentials and defaults
