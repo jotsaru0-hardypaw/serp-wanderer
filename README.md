@@ -37,9 +37,13 @@ Tags are free-form labels you can filter by using the dropdown above the
 keyword table, and manage (rename/remove across all keywords at once) via
 "Manage tags" next to it.
 
-**Selecting keywords:** check the boxes next to any keywords to check or
-remove several at once. Shift-click a checkbox to select every row between
-it and your last click, like file managers do.
+**Selecting keywords:** check the boxes next to any keywords, then use the
+"Actions" menu that appears — works the same whether one or many are
+selected. Beyond check/remove, it covers duplicating (as-is, or flipped to
+the other device — handy for tracking desktop and mobile separately),
+adding/removing tags, changing device, and moving to a different tracked
+domain. Shift-click a checkbox to select every row between it and your last
+click, like file managers do.
 
 **Sorting:** click "Position" or "Last checked" in the table header to sort
 by it — first click ascending, second click descending, third click back to
@@ -63,6 +67,11 @@ balance once an API key is saved. This is your paid balance (USD), not the
 free-tier monthly credit count (5,000/month on the free plan) — Bright Data
 doesn't expose that figure through a documented public API, so check it on
 their dashboard directly if you're relying on the free tier.
+
+**Last checked time:** shown relatively ("5m ago", "3h ago", "2d ago") and
+falls back to a short date once it's a week or older. Hover over it to see
+the exact date and time in your local timezone. It updates live while the
+tab stays open, not just on page load.
 
 ## Local setup
 

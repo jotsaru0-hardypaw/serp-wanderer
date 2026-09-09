@@ -6,6 +6,8 @@ import PositionChart, { CheckPoint } from "./PositionChart";
 import { Sparkline } from "./Sparkline";
 import { Spinner } from "./Spinner";
 import TagManager from "./TagManager";
+import RelativeTime from "./RelativeTime";
+import MoveDomainModal from "./MoveDomainModal";
 
 export type KeywordRow = {
   id: string;
@@ -175,6 +177,8 @@ export default function KeywordTable({
   const [tagFilter, setTagFilter] = useState<string>("all");
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
+  const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
+  const [moveModalOpen, setMoveModalOpen] = useState(false);
   const [sortColumn, setSortColumn] = useState<SortColumn>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const router = useRouter();
@@ -297,7 +301,10 @@ export default function KeywordTable({
     router.refresh();
   }
 
-  async function bulkAction(action: "check" | "remove") {
+  async function bulkAction(
+    action: "check" | "remove" | "duplicate" | "duplicate-flip-device" | "add-tags" | "remove-tags" | "set-device",
+    extra?: Record<string, unknown>
+  ) {
     const ids = Array.from(selected);
     if (ids.length === 0) return;
     if (action === "remove" && !confirm(`Remove ${ids.length} selected keyword${ids.length === 1 ? "" : "s"}?`)) {
@@ -313,10 +320,11 @@ export default function KeywordTable({
     }
 
     setBulkBusy(true);
+    setActionsMenuOpen(false);
     const res = await fetch("/api/keywords/bulk-action", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids, action }),
+      body: JSON.stringify({ ids, action, ...extra }),
     }).catch(() => null);
     const body = await res?.json().catch(() => null);
     setBulkBusy(false);
@@ -335,6 +343,35 @@ export default function KeywordTable({
 
     setSelected(new Set());
     router.refresh();
+  }
+
+  async function moveSelectedToDomain(targetDomainId: string) {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    setBulkBusy(true);
+    setMoveModalOpen(false);
+    await fetch("/api/keywords/bulk-action", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids, action: "move-domain", targetDomainId }),
+    }).catch(() => null);
+    setBulkBusy(false);
+    setSelected(new Set());
+    router.refresh();
+  }
+
+  function addTagsPrompt() {
+    const input = prompt(`Add tag(s) to ${selected.size} selected keyword(s) — comma separated:`);
+    if (!input?.trim()) return;
+    const tags = input.split(",").map((t) => t.trim()).filter(Boolean);
+    if (tags.length) bulkAction("add-tags", { tags });
+  }
+
+  function removeTagsPrompt() {
+    const input = prompt(`Remove tag(s) from ${selected.size} selected keyword(s) — comma separated:`);
+    if (!input?.trim()) return;
+    const tags = input.split(",").map((t) => t.trim()).filter(Boolean);
+    if (tags.length) bulkAction("remove-tags", { tags });
   }
 
   function exportCsv(mode: "latest" | "history") {
@@ -383,21 +420,84 @@ export default function KeywordTable({
           {selected.size > 0 && (
             <>
               <span className="text-muted">{selected.size} selected</span>
-              <button
-                onClick={() => bulkAction("check")}
-                disabled={bulkBusy}
-                className="flex items-center gap-1 text-accent hover:underline disabled:opacity-50"
-              >
-                {bulkBusy && <Spinner />}
-                Check selected
-              </button>
-              <button
-                onClick={() => bulkAction("remove")}
-                disabled={bulkBusy}
-                className="text-fall hover:underline disabled:opacity-50"
-              >
-                Remove selected
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setActionsMenuOpen((v) => !v)}
+                  disabled={bulkBusy}
+                  className="flex items-center gap-1 text-accent hover:underline disabled:opacity-50"
+                >
+                  {bulkBusy && <Spinner />}
+                  Actions ▾
+                </button>
+                {actionsMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setActionsMenuOpen(false)} />
+                    <div className="absolute right-0 mt-1 w-56 rounded-md border border-line bg-surface shadow-sm z-20 py-1">
+                      <button
+                        onClick={() => bulkAction("check")}
+                        className="block w-full text-left px-3 py-1.5 text-xs text-ink hover:bg-paper"
+                      >
+                        Check
+                      </button>
+                      <button
+                        onClick={() => bulkAction("duplicate")}
+                        className="block w-full text-left px-3 py-1.5 text-xs text-ink hover:bg-paper"
+                      >
+                        Duplicate
+                      </button>
+                      <button
+                        onClick={() => bulkAction("duplicate-flip-device")}
+                        className="block w-full text-left px-3 py-1.5 text-xs text-ink hover:bg-paper"
+                      >
+                        Duplicate for other device
+                      </button>
+                      <div className="my-1 border-t border-line" />
+                      <button
+                        onClick={addTagsPrompt}
+                        className="block w-full text-left px-3 py-1.5 text-xs text-ink hover:bg-paper"
+                      >
+                        Add tags…
+                      </button>
+                      <button
+                        onClick={removeTagsPrompt}
+                        className="block w-full text-left px-3 py-1.5 text-xs text-ink hover:bg-paper"
+                      >
+                        Remove tags…
+                      </button>
+                      <div className="my-1 border-t border-line" />
+                      <button
+                        onClick={() => bulkAction("set-device", { device: "desktop" })}
+                        className="block w-full text-left px-3 py-1.5 text-xs text-ink hover:bg-paper"
+                      >
+                        Set device: Desktop
+                      </button>
+                      <button
+                        onClick={() => bulkAction("set-device", { device: "mobile" })}
+                        className="block w-full text-left px-3 py-1.5 text-xs text-ink hover:bg-paper"
+                      >
+                        Set device: Mobile
+                      </button>
+                      <div className="my-1 border-t border-line" />
+                      <button
+                        onClick={() => {
+                          setActionsMenuOpen(false);
+                          setMoveModalOpen(true);
+                        }}
+                        className="block w-full text-left px-3 py-1.5 text-xs text-ink hover:bg-paper"
+                      >
+                        Move to domain…
+                      </button>
+                      <div className="my-1 border-t border-line" />
+                      <button
+                        onClick={() => bulkAction("remove")}
+                        className="block w-full text-left px-3 py-1.5 text-xs text-fall hover:bg-paper"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
               <button onClick={() => setSelected(new Set())} className="text-muted hover:text-ink">
                 Clear
               </button>
@@ -435,6 +535,13 @@ export default function KeywordTable({
       </div>
 
       {tagManagerOpen && <TagManager domainId={domainId} onClose={() => setTagManagerOpen(false)} />}
+      {moveModalOpen && (
+        <MoveDomainModal
+          currentDomainId={domainId}
+          onClose={() => setMoveModalOpen(false)}
+          onConfirm={moveSelectedToDomain}
+        />
+      )}
 
 
       <div className={`${gridCols} border-b border-line pb-2 text-xs text-muted`}>
@@ -524,9 +631,11 @@ export default function KeywordTable({
 
                 <Sparkline values={kw.checks.slice().reverse().map((c) => c.position)} />
 
-                <span className="text-xs text-muted">
-                  {latest ? new Date(latest.checkedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—"}
-                </span>
+                {latest ? (
+                  <RelativeTime iso={latest.checkedAt} className="text-xs text-muted cursor-default" />
+                ) : (
+                  <span className="text-xs text-muted">—</span>
+                )}
 
                 <button
                   onClick={() => checkOne(kw.id)}
