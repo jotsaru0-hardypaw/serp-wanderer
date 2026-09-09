@@ -20,6 +20,9 @@ export async function GET() {
     defaultLanguage: settings.defaultLanguage,
     defaultLocation: settings.defaultLocation,
     maxCheckDepth: settings.maxCheckDepth,
+    resendApiKeyMasked: maskSecret(settings.resendApiKey),
+    digestEmail: settings.digestEmail,
+    digestEnabled: settings.digestEnabled,
   });
 }
 
@@ -39,6 +42,9 @@ export async function POST(req: NextRequest) {
     defaultLanguage: (body.defaultLanguage as string | undefined)?.trim().toLowerCase(),
     defaultLocation: (body.defaultLocation as string | undefined)?.trim(),
     maxCheckDepth: Number(body.maxCheckDepth) || undefined,
+    resendApiKey: (body.resendApiKey as string | undefined)?.trim(),
+    digestEmail: (body.digestEmail as string | undefined)?.trim(),
+    digestEnabled: typeof body.digestEnabled === "boolean" ? body.digestEnabled : undefined,
   });
 
   return NextResponse.json({ ok: true });

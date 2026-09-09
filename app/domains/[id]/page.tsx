@@ -3,9 +3,11 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import { getSessionUser } from "@/lib/auth";
+import { tryGetQueryMetricsForUser } from "@/lib/google";
 import AddKeywordForm from "@/components/AddKeywordForm";
 import KeywordTable from "@/components/KeywordTable";
 import RefreshButton from "@/components/RefreshButton";
+import DiscoverKeywords from "@/components/DiscoverKeywords";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +15,7 @@ export default async function DomainPage({ params }: { params: { id: string } })
   const user = await getSessionUser();
   if (!user) redirect("/login");
 
-  const [domain, settings] = await Promise.all([
+  const [domain, settings, gscMetricsMap] = await Promise.all([
     prisma.domain.findUnique({
       where: { id: params.id },
       include: {
@@ -29,6 +31,7 @@ export default async function DomainPage({ params }: { params: { id: string } })
       },
     }),
     getSettings(user.id),
+    tryGetQueryMetricsForUser(user.id),
   ]);
 
   if (!domain || domain.userId !== user.id) notFound();
@@ -46,6 +49,10 @@ export default async function DomainPage({ params }: { params: { id: string } })
       url: c.url,
     })),
   }));
+
+  // Server Components can't pass a Map across to Client Components — flatten
+  // to a plain object.
+  const gscMetrics = gscMetricsMap ? Object.fromEntries(gscMetricsMap) : null;
 
   return (
     <div className="space-y-8">
@@ -69,8 +76,19 @@ export default async function DomainPage({ params }: { params: { id: string } })
       </section>
 
       <section className="overflow-x-auto">
-        <KeywordTable keywords={keywords} maxCheckDepth={settings.maxCheckDepth} domainId={domain.id} />
+        <KeywordTable
+          keywords={keywords}
+          maxCheckDepth={settings.maxCheckDepth}
+          domainId={domain.id}
+          gscMetrics={gscMetrics}
+        />
       </section>
+
+      {gscMetrics && (
+        <section className="border-t border-line pt-6">
+          <DiscoverKeywords domainId={domain.id} />
+        </section>
+      )}
     </div>
   );
 }

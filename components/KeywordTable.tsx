@@ -19,6 +19,13 @@ export type KeywordRow = {
   checks: CheckPoint[];
 };
 
+export type GscMetric = { clicks: number; impressions: number; ctr: number; position: number };
+
+function formatCompact(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+  return String(n);
+}
+
 function cityLabel(location: string | null): string | null {
   if (!location) return null;
   return location.split(",")[0] || location;
@@ -29,11 +36,13 @@ function PositionCell({
   previous,
   url,
   maxCheckDepth,
+  gsc,
 }: {
   current: number | null;
   previous: number | null;
   url: string | null | undefined;
   maxCheckDepth: number;
+  gsc?: GscMetric;
 }) {
   if (current == null) {
     return <span className="text-sm text-muted">Outside top {maxCheckDepth}</span>;
@@ -66,6 +75,14 @@ function PositionCell({
         >
           {path || url}
         </a>
+      )}
+      {gsc && (
+        <div
+          className="text-[11px] text-muted font-sans"
+          title={`${gsc.clicks} clicks, ${gsc.impressions} impressions, ${(gsc.ctr * 100).toFixed(1)}% CTR, avg. position ${gsc.position.toFixed(1)} — last 30 days from Search Console`}
+        >
+          {formatCompact(gsc.clicks)} clicks · {formatCompact(gsc.impressions)} impr
+        </div>
       )}
     </div>
   );
@@ -161,10 +178,12 @@ export default function KeywordTable({
   keywords,
   maxCheckDepth,
   domainId,
+  gscMetrics,
 }: {
   keywords: KeywordRow[];
   maxCheckDepth: number;
   domainId: string;
+  gscMetrics?: Record<string, GscMetric> | null;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -627,6 +646,7 @@ export default function KeywordTable({
                   previous={prev?.position ?? null}
                   url={latest?.url}
                   maxCheckDepth={maxCheckDepth}
+                  gsc={gscMetrics?.[kw.term.toLowerCase()]}
                 />
 
                 <Sparkline values={kw.checks.slice().reverse().map((c) => c.position)} />

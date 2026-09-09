@@ -6,6 +6,7 @@ import { getSessionUser } from "@/lib/auth";
 import SettingsForm from "@/components/SettingsForm";
 import BalanceDisplay from "@/components/BalanceDisplay";
 import GoogleConnectionForm from "@/components/GoogleConnectionForm";
+import DigestSettingsForm from "@/components/DigestSettingsForm";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,21 @@ export default async function SettingsPage({
           hasClientId={!!googleConn?.clientId}
           isConnected={!!googleConn?.accessToken}
           selectedSite={googleConn?.siteUrl ?? null}
+        />
+      </section>
+
+      <section className="space-y-4 border-t border-line pt-6">
+        <div>
+          <h2 className="text-lg font-semibold text-ink">Weekly email digest</h2>
+          <p className="text-sm text-muted mt-1">
+            Requires Search Console to be connected above. Sends the last 7 days' top queries
+            every Monday.
+          </p>
+        </div>
+        <DigestSettingsForm
+          currentKeyMasked={maskSecret(settings.resendApiKey)}
+          currentEmail={settings.digestEmail ?? ""}
+          currentEnabled={settings.digestEnabled}
         />
       </section>
     </div>

@@ -113,6 +113,46 @@ export async function listSites(accessToken: string): Promise<SearchConsoleSite[
   return data.siteEntry ?? [];
 }
 
+export type QueryMetric = { clicks: number; impressions: number; ctr: number; position: number };
+
+/**
+ * Fetches recent query-level performance for a property, keyed by lowercased
+ * query text — used both to annotate tracked keywords with real click/
+ * impression data, and to surface already-ranking queries that aren't
+ * tracked yet.
+ */
+export async function getQueryMetrics(
+  accessToken: string,
+  siteUrl: string,
+  days = 30
+): Promise<Map<string, QueryMetric>> {
+  const end = new Date();
+  end.setDate(end.getDate() - 2); // Search Console data typically lags 1-2 days
+  const start = new Date(end);
+  start.setDate(start.getDate() - days);
+
+  const rows = await querySearchAnalytics({
+    accessToken,
+    siteUrl,
+    startDate: start.toISOString().slice(0, 10),
+    endDate: end.toISOString().slice(0, 10),
+    dimensions: ["query"],
+    type: "web",
+    rowLimit: 5000,
+  });
+
+  const map = new Map<string, QueryMetric>();
+  for (const row of rows) {
+    map.set(row.keys[0].toLowerCase(), {
+      clicks: row.clicks,
+      impressions: row.impressions,
+      ctr: row.ctr,
+      position: row.position,
+    });
+  }
+  return map;
+}
+
 export type SearchAnalyticsRow = {
   keys: string[];
   clicks: number;
@@ -120,6 +160,23 @@ export type SearchAnalyticsRow = {
   ctr: number;
   position: number;
 };
+
+/**
+ * Convenience wrapper: resolves a valid access token and the user's chosen
+ * property, then fetches the query metrics map. Returns null (rather than
+ * throwing) if Search Console isn't connected/configured — callers treat
+ * that as "no GSC data available," not an error.
+ */
+export async function tryGetQueryMetricsForUser(userId: string): Promise<Map<string, QueryMetric> | null> {
+  const conn = await prisma.googleConnection.findUnique({ where: { userId } });
+  if (!conn?.siteUrl || !conn.accessToken) return null;
+  try {
+    const accessToken = await getValidAccessToken(userId);
+    return await getQueryMetrics(accessToken, conn.siteUrl);
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Queries Search Analytics for a property. `type` is Google's search-surface

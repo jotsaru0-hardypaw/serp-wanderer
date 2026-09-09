@@ -12,14 +12,14 @@ export async function POST(req: NextRequest) {
   if (!username || !password) {
     return NextResponse.json({ error: "Username and password are required" }, { status: 400 });
   }
-  if (!/^[a-z0-9_.-]{3,32}$/.test(username)) {
+  if (!/^[a-z0-9_.@+-]{3,64}$/.test(username)) {
     return NextResponse.json(
-      { error: "Username must be 3-32 characters: letters, numbers, _ . -" },
+      { error: "Username must be 3-64 characters: letters, numbers, and _ . @ + -" },
       { status: 400 }
     );
   }
-  if (password.length < 8) {
-    return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
+  if (password.length < 5) {
+    return NextResponse.json({ error: "Password must be at least 5 characters" }, { status: 400 });
   }
 
   const existing = await prisma.user.findUnique({ where: { username } });

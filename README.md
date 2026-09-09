@@ -159,6 +159,23 @@ Separate from Bright Data rank checks — this pulls clicks, impressions, CTR,
 and average position directly from Google, including Discover performance
 (traffic from Google's Discover feed, not regular search).
 
+**What connecting it unlocks:**
+
+- **Inline metrics on tracked keywords** — each keyword's row in the table
+  shows real clicks and impressions from the last 30 days (when Search
+  Console has data for that exact query), right next to the position Bright
+  Data found. Hover the small text for the full breakdown (CTR, avg.
+  position).
+- **"Keywords you already rank for"** — a collapsible section on each
+  domain's page, below the keyword table, listing queries Search Console
+  shows you getting clicks on that *aren't* in your tracked list yet, sorted
+  by clicks. One click adds any of them to tracking.
+- **The `/search-console` page** — clicks/impressions/CTR/position over the
+  last 7/30/90 days, grouped by query, page, date, country, or device.
+- **Weekly email digest** — top queries from the last 7 days, sent every
+  Monday, if you set it up (needs a [Resend](https://resend.com) API key —
+  free tier is enough for this).
+
 Each account connects its own Google Search Console using its own Google
 Cloud OAuth client — same "bring your own credentials" pattern as Bright
 Data, entered on the Settings page.
@@ -179,6 +196,19 @@ Data, entered on the Settings page.
 **Note on the "unverified app" warning:** while your OAuth consent screen is in Testing mode (the default), Google shows an interstitial warning during the connect step since the app hasn't been through Google's verification review. For personal or small-team use this is expected — click "Advanced" → "Go to (your app name)" to proceed. It only affects the consent screen's appearance, not functionality.
 
 **Discover/News data limitation (from Google, not this app):** Google's API doesn't support grouping Discover or News data by search query — only by page, date, country, or device. The insights page switches away from "By query" automatically when you pick Discover or News, since Google's API rejects that combination outright.
+
+**Weekly digest setup:** sign up at resend.com (free), grab an API key, paste it into Settings along with the recipient email, and check "Send me a weekly digest." It sends via Resend's shared sandbox address by default — no domain verification needed to get started. Runs every Monday at 13:00 UTC via a second Vercel Cron entry already in `vercel.json`.
+
+## Google Ads (keyword volume, keyword ideas)
+
+**Not built yet.** Real search-volume data lives in Google Ads' Keyword
+Planner, which requires a Google Ads account and a **developer token**
+approved manually by Google — a review process, not a self-serve API key.
+Building against this before you have access risks shipping something you
+can't actually use. Once you have a developer token, this is a natural
+next addition: a "Research" page for ad-hoc keyword lookup, keyword idea
+generation seeded from your site content/tracked keywords/Search Console
+queries, and monthly search volume shown alongside tracked keywords.
 
 ## Extending
 

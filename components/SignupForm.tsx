@@ -45,7 +45,7 @@ export default function SignupForm() {
           id="username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          placeholder="letters, numbers, _ . -"
+          placeholder="email or username"
           className={inputClasses}
           autoComplete="username"
           autoFocus
@@ -60,7 +60,7 @@ export default function SignupForm() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="At least 8 characters"
+          placeholder="At least 5 characters"
           className={inputClasses}
           autoComplete="new-password"
         />

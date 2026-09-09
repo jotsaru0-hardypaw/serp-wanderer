@@ -9,6 +9,9 @@ export type ResolvedSettings = {
   defaultLanguage: string;
   defaultLocation: string | null;
   maxCheckDepth: number;
+  resendApiKey: string | null;
+  digestEmail: string | null;
+  digestEnabled: boolean;
 };
 
 /**
@@ -28,6 +31,9 @@ export async function getSettings(userId: string): Promise<ResolvedSettings> {
     defaultLanguage: row?.defaultLanguage || "en",
     defaultLocation: row?.defaultLocation || null,
     maxCheckDepth: row?.maxCheckDepth && VALID_DEPTHS.includes(row.maxCheckDepth) ? row.maxCheckDepth : 100,
+    resendApiKey: row?.resendApiKey || null,
+    digestEmail: row?.digestEmail || null,
+    digestEnabled: row?.digestEnabled ?? false,
   };
 }
 
@@ -45,6 +51,9 @@ export async function updateSettings(
     defaultLanguage?: string;
     defaultLocation?: string;
     maxCheckDepth?: number;
+    resendApiKey?: string;
+    digestEmail?: string;
+    digestEnabled?: boolean;
   }
 ) {
   const existing = await prisma.settings.findUnique({ where: { userId } });
@@ -60,6 +69,9 @@ export async function updateSettings(
       defaultLanguage: input.defaultLanguage || "en",
       defaultLocation: input.defaultLocation || null,
       maxCheckDepth: depth ?? 100,
+      resendApiKey: input.resendApiKey || null,
+      digestEmail: input.digestEmail || null,
+      digestEnabled: input.digestEnabled ?? false,
     },
     update: {
       brightdataApiKey: input.brightdataApiKey ? input.brightdataApiKey : existing?.brightdataApiKey,
@@ -69,6 +81,9 @@ export async function updateSettings(
       // Explicit empty string clears the default city; undefined (field omitted) leaves it unchanged.
       defaultLocation: input.defaultLocation !== undefined ? input.defaultLocation || null : existing?.defaultLocation,
       maxCheckDepth: depth ?? existing?.maxCheckDepth ?? 100,
+      resendApiKey: input.resendApiKey ? input.resendApiKey : existing?.resendApiKey,
+      digestEmail: input.digestEmail !== undefined ? input.digestEmail || null : existing?.digestEmail,
+      digestEnabled: input.digestEnabled ?? existing?.digestEnabled ?? false,
     },
   });
 }

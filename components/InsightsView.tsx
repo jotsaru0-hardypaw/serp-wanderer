@@ -16,7 +16,7 @@ const DIMENSION_LABEL: Record<string, string> = {
 export default function InsightsView({ siteUrl }: { siteUrl: string }) {
   const [type, setType] = useState<"web" | "discover" | "news">("web");
   const [dimension, setDimension] = useState("query");
-  const [days, setDays] = useState(28);
+  const [days, setDays] = useState(30);
   const [rows, setRows] = useState<Row[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +65,7 @@ export default function InsightsView({ siteUrl }: { siteUrl: string }) {
         </select>
         <select value={days} onChange={(e) => setDays(Number(e.target.value))} className={selectClasses}>
           <option value={7}>Last 7 days</option>
-          <option value={28}>Last 28 days</option>
+          <option value={30}>Last 30 days</option>
           <option value={90}>Last 90 days</option>
         </select>
         {loading && <Spinner className="text-muted" />}
