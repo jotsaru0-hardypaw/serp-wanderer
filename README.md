@@ -6,6 +6,18 @@ schedule (or on demand). Positions are stored over time so you get a trend
 line per keyword — a lightweight SerpBear-style dashboard, purpose-built
 around Bright Data instead of SerpBear's other scraper integrations.
 
+## Accounts
+
+The app is multi-user: each account has its own domains, keywords, and
+Bright Data credentials — nobody sees anyone else's data. Sign up with a
+username and password at `/signup` (no email verification — this is meant
+for a small team or personal use, not public signups). Log in at `/login`.
+
+**Upgrading an existing deployment:** if you were already running this
+before accounts existed, the very first account you sign up automatically
+takes ownership of whatever domains/keywords/settings already existed — no
+manual data migration needed beyond running the SQL migration below.
+
 ## How it works
 
 - Each keyword check calls Bright Data's SERP API (`data_format: parsed_light`),

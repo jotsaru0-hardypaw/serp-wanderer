@@ -7,11 +7,39 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id           String     @id @default(cuid())
+  username     String     @unique
+  passwordHash String
+  createdAt    DateTime   @default(now())
+  domains      Domain[]
+  settings     Settings?
+  sessions     Session[]
+}
+
+// A session token stored in an httpOnly cookie. Deleting the row logs the
+// device out; expired rows are just ignored (not actively swept), which is
+// fine at this scale.
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
 model Domain {
   id        String     @id @default(cuid())
+  userId    String?    // nullable only to support the one-time migration from pre-auth data — see signup route, which claims orphaned rows for the first account created
+  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String     // e.g. "hardypaw.com" — bare hostname, no protocol/www
   createdAt DateTime   @default(now())
   keywords  Keyword[]
+
+  @@index([userId])
 }
 
 model Keyword {
@@ -41,12 +69,13 @@ model RankCheck {
   @@index([keywordId, checkedAt])
 }
 
-// Single-row table (id is always "singleton") holding settings entered
-// through the UI, so the app can run without any secrets in env vars.
-// Env vars (BRIGHTDATA_API_KEY / BRIGHTDATA_SERP_ZONE) still work as a
-// fallback if these are left empty — see lib/settings.ts.
+// One row per user, holding their own Bright Data credentials and defaults
+// entered through the Settings page — so the app can run without any
+// secrets in env vars, and each account brings its own Bright Data usage.
 model Settings {
-  id               String   @id @default("singleton")
+  id               String   @id @default(cuid())
+  userId           String?  @unique // nullable only to support the one-time migration from pre-auth data — see signup route
+  user             User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   brightdataApiKey String?
   brightdataZone   String?
   defaultCountry   String   @default("us")

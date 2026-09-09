@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSettings, updateSettings, maskSecret } from "@/lib/settings";
+import { getSessionUser } from "@/lib/auth";
 
 // Never statically prerendered — this route always reads/writes live
 // database state, and some deployments run before the schema migration
@@ -8,7 +9,10 @@ import { getSettings, updateSettings, maskSecret } from "@/lib/settings";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const settings = await getSettings();
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const settings = await getSettings(user.id);
   return NextResponse.json({
     brightdataApiKeyMasked: maskSecret(settings.brightdataApiKey),
     brightdataZone: settings.brightdataZone, // zone names aren't secret, safe to show in full
@@ -20,12 +24,15 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const body = await req.json().catch(() => null);
   if (!body) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  await updateSettings({
+  await updateSettings(user.id, {
     brightdataApiKey: (body.brightdataApiKey as string | undefined)?.trim(),
     brightdataZone: (body.brightdataZone as string | undefined)?.trim(),
     defaultCountry: (body.defaultCountry as string | undefined)?.trim().toLowerCase(),

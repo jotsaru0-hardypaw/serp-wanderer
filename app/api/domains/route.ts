@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
 
 // Never statically prerendered — this route always reads/writes live
 // database state, and some deployments run before the schema migration
@@ -8,7 +9,11 @@ import { prisma } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const domains = await prisma.domain.findMany({
+    where: { userId: user.id },
     orderBy: { createdAt: "asc" },
     include: { _count: { select: { keywords: true } } },
   });
@@ -16,6 +21,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const body = await req.json().catch(() => null);
   const name = (body?.name as string | undefined)?.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
 
@@ -23,11 +31,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Domain name is required" }, { status: 400 });
   }
 
-  const existing = await prisma.domain.findFirst({ where: { name } });
+  const existing = await prisma.domain.findFirst({ where: { name, userId: user.id } });
   if (existing) {
     return NextResponse.json({ error: "Domain already tracked" }, { status: 409 });
   }
 
-  const domain = await prisma.domain.create({ data: { name } });
+  const domain = await prisma.domain.create({ data: { name, userId: user.id } });
   return NextResponse.json(domain, { status: 201 });
 }

@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
+import { getSessionUser } from "@/lib/auth";
 import AddKeywordForm from "@/components/AddKeywordForm";
 import KeywordTable from "@/components/KeywordTable";
 import RefreshButton from "@/components/RefreshButton";
@@ -9,6 +10,9 @@ import RefreshButton from "@/components/RefreshButton";
 export const dynamic = "force-dynamic";
 
 export default async function DomainPage({ params }: { params: { id: string } }) {
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
+
   const [domain, settings] = await Promise.all([
     prisma.domain.findUnique({
       where: { id: params.id },
@@ -24,10 +28,10 @@ export default async function DomainPage({ params }: { params: { id: string } })
         },
       },
     }),
-    getSettings(),
+    getSettings(user.id),
   ]);
 
-  if (!domain) notFound();
+  if (!domain || domain.userId !== user.id) notFound();
 
   const keywords = domain.keywords.map((k) => ({
     id: k.id,

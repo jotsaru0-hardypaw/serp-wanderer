@@ -1,13 +1,19 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
+import { getSessionUser } from "@/lib/auth";
 import AddDomainForm from "@/components/AddDomainForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
+
   const [domains, settings] = await Promise.all([
     prisma.domain.findMany({
+      where: { userId: user.id },
       orderBy: { createdAt: "asc" },
       include: {
         keywords: {
@@ -21,7 +27,7 @@ export default async function HomePage() {
         },
       },
     }),
-    getSettings(),
+    getSettings(user.id),
   ]);
 
   const needsSetup = !settings.brightdataApiKey || !settings.brightdataZone;

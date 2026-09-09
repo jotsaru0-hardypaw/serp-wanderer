@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
 
 // Never statically prerendered — this route always reads/writes live
 // database state, and some deployments run before the schema migration
@@ -7,7 +8,18 @@ import { prisma } from "@/lib/db";
 // the production build.
 export const dynamic = "force-dynamic";
 
+async function assertOwnedDomain(domainId: string, userId: string) {
+  const domain = await prisma.domain.findUnique({ where: { id: domainId } });
+  return domain && domain.userId === userId;
+}
+
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await assertOwnedDomain(params.id, user.id))) {
+    return NextResponse.json({ error: "Domain not found" }, { status: 404 });
+  }
+
   const keywords = await prisma.keyword.findMany({
     where: { domainId: params.id },
     select: { tags: true },
@@ -24,6 +36,12 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await assertOwnedDomain(params.id, user.id))) {
+    return NextResponse.json({ error: "Domain not found" }, { status: 404 });
+  }
+
   const body = await req.json().catch(() => null);
   const oldTag = (body?.oldTag as string | undefined)?.trim();
   const newTag = (body?.newTag as string | undefined)?.trim();
@@ -50,6 +68,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await assertOwnedDomain(params.id, user.id))) {
+    return NextResponse.json({ error: "Domain not found" }, { status: 404 });
+  }
+
   const body = await req.json().catch(() => null);
   const tag = (body?.tag as string | undefined)?.trim();
 

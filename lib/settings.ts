@@ -1,6 +1,5 @@
 import { prisma } from "./db";
 
-const SETTINGS_ID = "singleton";
 const VALID_DEPTHS = [10, 30, 50, 100];
 
 export type ResolvedSettings = {
@@ -13,12 +12,14 @@ export type ResolvedSettings = {
 };
 
 /**
- * Read settings entered in the UI. If a value hasn't been filled in there,
- * fall back to the matching environment variable — so a deployment can
- * still be configured entirely through env vars if that's preferred.
+ * Read a user's own settings. If a value hasn't been filled in on the
+ * Settings page, falls back to the matching environment variable — so a
+ * deployment can still be configured entirely through env vars if preferred
+ * (env vars are shared across all users on the deployment, since they're
+ * not per-account).
  */
-export async function getSettings(): Promise<ResolvedSettings> {
-  const row = await prisma.settings.findUnique({ where: { id: SETTINGS_ID } });
+export async function getSettings(userId: string): Promise<ResolvedSettings> {
+  const row = await prisma.settings.findUnique({ where: { userId } });
 
   return {
     brightdataApiKey: row?.brightdataApiKey || process.env.BRIGHTDATA_API_KEY || null,
@@ -31,25 +32,28 @@ export async function getSettings(): Promise<ResolvedSettings> {
 }
 
 /**
- * Update settings. Blank/omitted fields for the secret values are treated as
- * "leave unchanged" so the form never needs to round-trip the real key back
- * to the browser just to preserve it.
+ * Update a user's settings. Blank/omitted fields for the secret values are
+ * treated as "leave unchanged" so the form never needs to round-trip the
+ * real key back to the browser just to preserve it.
  */
-export async function updateSettings(input: {
-  brightdataApiKey?: string;
-  brightdataZone?: string;
-  defaultCountry?: string;
-  defaultLanguage?: string;
-  defaultLocation?: string;
-  maxCheckDepth?: number;
-}) {
-  const existing = await prisma.settings.findUnique({ where: { id: SETTINGS_ID } });
+export async function updateSettings(
+  userId: string,
+  input: {
+    brightdataApiKey?: string;
+    brightdataZone?: string;
+    defaultCountry?: string;
+    defaultLanguage?: string;
+    defaultLocation?: string;
+    maxCheckDepth?: number;
+  }
+) {
+  const existing = await prisma.settings.findUnique({ where: { userId } });
   const depth = input.maxCheckDepth && VALID_DEPTHS.includes(input.maxCheckDepth) ? input.maxCheckDepth : undefined;
 
   return prisma.settings.upsert({
-    where: { id: SETTINGS_ID },
+    where: { userId },
     create: {
-      id: SETTINGS_ID,
+      userId,
       brightdataApiKey: input.brightdataApiKey || null,
       brightdataZone: input.brightdataZone || null,
       defaultCountry: input.defaultCountry || "us",

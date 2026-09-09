@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
 
 // Never statically prerendered — this route always reads/writes live
 // database state, and some deployments run before the schema migration
@@ -12,6 +13,9 @@ export const dynamic = "force-dynamic";
 // especially with a deep check-depth configured. They'll pick up a position
 // on the next "Refresh now" or scheduled cron run.
 export async function POST(req: NextRequest) {
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const body = await req.json().catch(() => null);
   const domainId = body?.domainId as string | undefined;
   const rawTerms = body?.terms as string | undefined;
@@ -26,7 +30,7 @@ export async function POST(req: NextRequest) {
   }
 
   const domain = await prisma.domain.findUnique({ where: { id: domainId } });
-  if (!domain) {
+  if (!domain || domain.userId !== user.id) {
     return NextResponse.json({ error: "Domain not found" }, { status: 404 });
   }
 

@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Public_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { APP_VERSION, LAST_UPDATED } from "@/lib/version";
+import { getSessionUser } from "@/lib/auth";
+import LogoutButton from "@/components/LogoutButton";
 
 const publicSans = Public_Sans({
   subsets: ["latin"],
@@ -27,7 +29,9 @@ const lastUpdatedFormatted = new Date(LAST_UPDATED).toLocaleDateString(undefined
   day: "numeric",
 });
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const user = await getSessionUser();
+
   return (
     <html lang="en" className={`${publicSans.variable} ${plexMono.variable}`}>
       <body className="min-h-screen bg-paper font-sans text-ink antialiased">
@@ -42,9 +46,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 · {APP_VERSION}
               </span>
             </a>
-            <a href="/settings" className="text-sm text-muted hover:text-accent">
-              Settings
-            </a>
+            {user && (
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-muted">{user.username}</span>
+                <a href="/settings" className="text-sm text-muted hover:text-accent">
+                  Settings
+                </a>
+                <LogoutButton />
+              </div>
+            )}
           </div>
         </header>
         <main className="mx-auto max-w-4xl px-6 py-10">{children}</main>

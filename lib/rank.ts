@@ -33,13 +33,25 @@ export async function checkKeyword(keywordId: string): Promise<CheckOutcome> {
   }
 
   try {
-    const { maxCheckDepth } = await getSettings();
+    if (!keyword.domain.userId) {
+      return {
+        keywordId: keyword.id,
+        term: keyword.term,
+        position: null,
+        url: null,
+        error: "This domain isn't linked to an account yet.",
+      };
+    }
+
+    const { brightdataApiKey, brightdataZone, maxCheckDepth } = await getSettings(keyword.domain.userId);
     const maxPages = Math.max(1, Math.ceil(maxCheckDepth / 10));
 
     let result: { position: number; url: string } | null = null;
 
     for (let page = 0; page < maxPages; page++) {
       const serp = await fetchSerp({
+        apiKey: brightdataApiKey,
+        zone: brightdataZone,
         keyword: keyword.term,
         country: keyword.country,
         language: keyword.language,

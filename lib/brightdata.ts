@@ -6,8 +6,6 @@
 // multiple requests — see checkKeyword in ./rank.ts, which drives this via
 // the `page` argument below.
 
-import { getSettings } from "./settings";
-
 export type OrganicResult = {
   link: string;
   title: string;
@@ -31,8 +29,12 @@ export class BrightDataError extends Error {
 
 /**
  * Fetch Google search results for a single keyword via Bright Data's SERP API.
+ * Credentials are passed in explicitly (rather than read internally) since
+ * they're per-user — the caller resolves whose credentials to use.
  */
 export async function fetchSerp(params: {
+  apiKey: string | null;
+  zone: string | null;
   keyword: string;
   country: string; // "gl" — e.g. "us"
   language: string; // "hl" — e.g. "en"
@@ -40,7 +42,7 @@ export async function fetchSerp(params: {
   location?: string | null; // optional city-level targeting (Google Ads canonical geo-target name), sent as Google's `uule` param
   page?: number; // 0-indexed page of results; page 1 = results 10-19, etc.
 }): Promise<SerpResult> {
-  const { brightdataApiKey: apiKey, brightdataZone: zone } = await getSettings();
+  const { apiKey, zone } = params;
   if (!apiKey || !zone) {
     throw new BrightDataError(
       "Bright Data isn't configured yet — add your API key and zone name on the Settings page."

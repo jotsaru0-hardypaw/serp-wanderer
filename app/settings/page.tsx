@@ -1,12 +1,17 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getSettings, maskSecret } from "@/lib/settings";
+import { getSessionUser } from "@/lib/auth";
 import SettingsForm from "@/components/SettingsForm";
 import BalanceDisplay from "@/components/BalanceDisplay";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const settings = await getSettings();
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
+
+  const settings = await getSettings(user.id);
 
   return (
     <div className="space-y-6 max-w-lg">

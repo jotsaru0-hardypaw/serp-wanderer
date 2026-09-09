@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { checkKeyword } from "@/lib/rank";
+import { getSessionUser } from "@/lib/auth";
 
 // Never statically prerendered — this route always reads/writes live
 // database state, and some deployments run before the schema migration
@@ -23,12 +24,25 @@ type Action =
   | "move-domain";
 
 export async function POST(req: NextRequest) {
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const body = await req.json().catch(() => null);
-  const ids = body?.ids as string[] | undefined;
+  const requestedIds = body?.ids as string[] | undefined;
   const action = body?.action as Action | undefined;
 
-  if (!ids?.length || !action) {
+  if (!requestedIds?.length || !action) {
     return NextResponse.json({ error: "ids and action are required" }, { status: 400 });
+  }
+
+  // Silently narrow to only keywords the caller actually owns — a stale or
+  // tampered id list can't touch anyone else's data.
+  const owned = await prisma.keyword.findMany({
+    where: { id: { in: requestedIds }, domain: { userId: user.id } },
+  });
+  const ids = owned.map((k) => k.id);
+  if (ids.length === 0) {
+    return NextResponse.json({ error: "None of the selected keywords were found" }, { status: 404 });
   }
 
   switch (action) {
@@ -48,9 +62,8 @@ export async function POST(req: NextRequest) {
 
     case "duplicate":
     case "duplicate-flip-device": {
-      const keywords = await prisma.keyword.findMany({ where: { id: { in: ids } } });
       const created = await prisma.keyword.createMany({
-        data: keywords.map((k) => ({
+        data: owned.map((k) => ({
           domainId: k.domainId,
           term: k.term,
           country: k.country,
@@ -68,32 +81,30 @@ export async function POST(req: NextRequest) {
       const tags = (body?.tags as string[] | undefined)?.map((t) => t.trim()).filter(Boolean) ?? [];
       if (tags.length === 0) return NextResponse.json({ error: "tags are required" }, { status: 400 });
 
-      const keywords = await prisma.keyword.findMany({ where: { id: { in: ids } }, select: { id: true, tags: true } });
       await prisma.$transaction(
-        keywords.map((k) =>
+        owned.map((k) =>
           prisma.keyword.update({
             where: { id: k.id },
             data: { tags: Array.from(new Set([...k.tags, ...tags])) },
           })
         )
       );
-      return NextResponse.json({ updated: keywords.length });
+      return NextResponse.json({ updated: owned.length });
     }
 
     case "remove-tags": {
       const tags = (body?.tags as string[] | undefined)?.map((t) => t.trim()).filter(Boolean) ?? [];
       if (tags.length === 0) return NextResponse.json({ error: "tags are required" }, { status: 400 });
 
-      const keywords = await prisma.keyword.findMany({ where: { id: { in: ids } }, select: { id: true, tags: true } });
       await prisma.$transaction(
-        keywords.map((k) =>
+        owned.map((k) =>
           prisma.keyword.update({
             where: { id: k.id },
             data: { tags: k.tags.filter((t) => !tags.includes(t)) },
           })
         )
       );
-      return NextResponse.json({ updated: keywords.length });
+      return NextResponse.json({ updated: owned.length });
     }
 
     case "set-device": {
@@ -107,7 +118,9 @@ export async function POST(req: NextRequest) {
       if (!targetDomainId) return NextResponse.json({ error: "targetDomainId is required" }, { status: 400 });
 
       const target = await prisma.domain.findUnique({ where: { id: targetDomainId } });
-      if (!target) return NextResponse.json({ error: "Target domain not found" }, { status: 404 });
+      if (!target || target.userId !== user.id) {
+        return NextResponse.json({ error: "Target domain not found" }, { status: 404 });
+      }
 
       const result = await prisma.keyword.updateMany({ where: { id: { in: ids } }, data: { domainId: targetDomainId } });
       return NextResponse.json({ moved: result.count });
