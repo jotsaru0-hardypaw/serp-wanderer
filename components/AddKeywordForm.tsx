@@ -2,8 +2,8 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { US_CITIES } from "@/lib/us-cities";
 import { Spinner } from "./Spinner";
+import LocationInput from "./LocationInput";
 
 function parseTags(input: string): string[] {
   return input
@@ -146,14 +146,12 @@ export default function AddKeywordForm({
           <option value="au">AU</option>
         </select>
         {country === "us" && (
-          <select value={location} onChange={(e) => setLocation(e.target.value)} className={selectClasses}>
-            <option value="">Any city</option>
-            {US_CITIES.map((c) => (
-              <option key={c.canonicalName} value={c.canonicalName}>
-                {c.label}
-              </option>
-            ))}
-          </select>
+          <LocationInput
+            id="keyword-location"
+            value={location}
+            onChange={setLocation}
+            className={`min-w-[180px] ${inputClasses}`}
+          />
         )}
         <select
           value={device}

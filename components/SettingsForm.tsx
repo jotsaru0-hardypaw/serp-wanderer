@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { US_CITIES } from "@/lib/us-cities";
+import LocationInput from "./LocationInput";
 
 export default function SettingsForm({
   currentKeyMasked,
@@ -141,22 +141,10 @@ export default function SettingsForm({
           <label className={labelClasses} htmlFor="city">
             Default city (optional, US only)
           </label>
-          <select
-            id="city"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            className={inputClasses}
-          >
-            <option value="">No specific city (country-level)</option>
-            {US_CITIES.map((c) => (
-              <option key={c.canonicalName} value={c.canonicalName}>
-                {c.label}
-              </option>
-            ))}
-          </select>
+          <LocationInput id="city" value={location} onChange={setLocation} className={inputClasses} />
           <p className={helpClasses}>
             Narrows results to how Google looks from that specific city, rather than the US in
-            general — useful for local SEO.
+            general — useful for local SEO. Leave blank for country-level.
           </p>
         </div>
       )}
