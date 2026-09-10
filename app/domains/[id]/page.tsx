@@ -1,10 +1,9 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import { getSessionUser } from "@/lib/auth";
 import { tryGetQueryMetricsForUser } from "@/lib/google";
-import AddKeywordForm from "@/components/AddKeywordForm";
+import AddKeywordTrigger from "@/components/AddKeywordTrigger";
 import KeywordTable from "@/components/KeywordTable";
 import RefreshButton from "@/components/RefreshButton";
 import DiscoverKeywords from "@/components/DiscoverKeywords";
@@ -55,25 +54,19 @@ export default async function DomainPage({ params }: { params: { id: string } })
   const gscMetrics = gscMetricsMap ? Object.fromEntries(gscMetricsMap) : null;
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <Link href="/" className="text-xs text-muted hover:text-accent">
-            ← All domains
-          </Link>
-          <h1 className="text-xl font-semibold text-ink">{domain.name}</h1>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold text-ink truncate">{domain.name}</h1>
+        <div className="flex items-center gap-2 shrink-0">
+          <RefreshButton domainId={domain.id} />
+          <AddKeywordTrigger
+            domainId={domain.id}
+            defaultCountry={settings.defaultCountry}
+            defaultLanguage={settings.defaultLanguage}
+            defaultLocation={settings.defaultLocation ?? ""}
+          />
         </div>
-        <RefreshButton domainId={domain.id} />
       </div>
-
-      <section>
-        <AddKeywordForm
-          domainId={domain.id}
-          defaultCountry={settings.defaultCountry}
-          defaultLanguage={settings.defaultLanguage}
-          defaultLocation={settings.defaultLocation ?? ""}
-        />
-      </section>
 
       <section className="overflow-x-auto">
         <KeywordTable

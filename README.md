@@ -6,6 +6,16 @@ schedule (or on demand). Positions are stored over time so you get a trend
 line per keyword — a lightweight SerpBear-style dashboard, purpose-built
 around Bright Data instead of SerpBear's other scraper integrations.
 
+## Layout
+
+A persistent sidebar (desktop) or domain-switcher dropdown (mobile) replaces
+navigating back to a domain list page — pick a domain once and it stays
+selected while you work. Adding a keyword is a button that opens a small
+dialog instead of a permanent form bar. The keyword table becomes stacked
+cards below the `md` breakpoint instead of a horizontally-scrolling grid.
+Settings is tabbed (Bright Data / Search Console / Email digest) instead of
+one long scrolling page.
+
 ## Accounts
 
 The app is multi-user: each account has its own domains, keywords, and

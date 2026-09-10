@@ -34,56 +34,60 @@ function cityLabel(location: string | null): string | null {
 function PositionCell({
   current,
   previous,
-  url,
   maxCheckDepth,
-  gsc,
 }: {
   current: number | null;
   previous: number | null;
-  url: string | null | undefined;
   maxCheckDepth: number;
-  gsc?: GscMetric;
 }) {
   if (current == null) {
     return <span className="text-sm text-muted">Outside top {maxCheckDepth}</span>;
   }
   const delta = previous != null ? previous - current : null; // positive = improved
-  let path = "";
-  try {
-    if (url) path = new URL(url).pathname.replace(/\/$/, "") || "/";
-  } catch {
-    path = "";
-  }
 
   return (
-    <div className="font-mono">
-      <div className="flex items-baseline gap-2">
-        <span className="text-[15px] font-medium tabular-nums text-ink">{current}</span>
-        {delta != null && delta !== 0 && (
-          <span className={`text-xs tabular-nums ${delta > 0 ? "text-rise" : "text-fall"}`}>
-            {delta > 0 ? `▲${delta}` : `▼${Math.abs(delta)}`}
-          </span>
-        )}
-      </div>
-      {url && (
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block text-xs text-muted hover:text-accent truncate max-w-[140px] font-sans"
-          title={url}
-        >
-          {path || url}
-        </a>
+    <div className="flex items-baseline gap-2 font-mono">
+      <span className="text-[15px] font-medium tabular-nums text-ink">{current}</span>
+      {delta != null && delta !== 0 && (
+        <span className={`text-xs tabular-nums ${delta > 0 ? "text-rise" : "text-fall"}`}>
+          {delta > 0 ? `▲${delta}` : `▼${Math.abs(delta)}`}
+        </span>
       )}
-      {gsc && (
-        <div
-          className="text-[11px] text-muted font-sans"
-          title={`${gsc.clicks} clicks, ${gsc.impressions} impressions, ${(gsc.ctr * 100).toFixed(1)}% CTR, avg. position ${gsc.position.toFixed(1)} — last 30 days from Search Console`}
-        >
-          {formatCompact(gsc.clicks)} clicks · {formatCompact(gsc.impressions)} impr
-        </div>
-      )}
+    </div>
+  );
+}
+
+function RankingUrlCell({ url }: { url: string | null | undefined }) {
+  if (!url) return <span className="text-xs text-muted">—</span>;
+  let path = "";
+  try {
+    path = new URL(url).pathname.replace(/\/$/, "") || "/";
+  } catch {
+    path = url;
+  }
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block text-xs text-muted hover:text-accent truncate max-w-[130px]"
+      title={url}
+    >
+      {path}
+    </a>
+  );
+}
+
+function GscCell({ gsc }: { gsc?: GscMetric }) {
+  if (!gsc) return <span className="text-xs text-muted">—</span>;
+  return (
+    <div
+      className="text-xs text-muted"
+      title={`${gsc.clicks} clicks, ${gsc.impressions} impressions, ${(gsc.ctr * 100).toFixed(1)}% CTR, avg. position ${gsc.position.toFixed(1)} — last 30 days from Search Console`}
+    >
+      {formatCompact(gsc.clicks)} clicks
+      <br />
+      {formatCompact(gsc.impressions)} impr
     </div>
   );
 }
@@ -172,7 +176,14 @@ function downloadCsv(csv: string, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-const gridCols = "grid grid-cols-[20px_1fr_100px_84px_88px_96px_60px] items-center gap-3";
+function desktopGridCols(hasGsc: boolean) {
+  // checkbox | keyword | position | [GSC] | trend | url | last checked | check | remove
+  return `hidden md:grid ${
+    hasGsc
+      ? "md:grid-cols-[20px_1fr_70px_100px_84px_120px_96px_50px_60px]"
+      : "md:grid-cols-[20px_1fr_70px_84px_120px_96px_50px_60px]"
+  } items-center gap-3`;
+}
 
 export default function KeywordTable({
   keywords,
@@ -409,7 +420,7 @@ export default function KeywordTable({
   }
 
   return (
-    <div className="min-w-[640px]">
+    <div className="md:min-w-[720px]">
       <div className="flex items-center justify-between pb-2 gap-3">
         <div className="flex items-center gap-3">
           {allTags.length > 0 ? (
@@ -563,7 +574,7 @@ export default function KeywordTable({
       )}
 
 
-      <div className={`${gridCols} border-b border-line pb-2 text-xs text-muted`}>
+      <div className={`${desktopGridCols(!!gscMetrics)} border-b border-line pb-2 text-xs text-muted`}>
         <input
           type="checkbox"
           checked={allVisibleSelected}
@@ -578,7 +589,9 @@ export default function KeywordTable({
           direction={sortColumn === "position" ? sortDirection : null}
           onClick={() => cycleSort("position")}
         />
+        {gscMetrics && <span>Search Console</span>}
         <span>Trend</span>
+        <span>Ranking URL</span>
         <SortHeader
           label="Last checked"
           active={sortColumn === "lastChecked"}
@@ -598,9 +611,42 @@ export default function KeywordTable({
           const justUpdated = justUpdatedIds.has(kw.id);
           const error = errors[kw.id];
           const city = cityLabel(kw.location);
+          const gsc = gscMetrics?.[kw.term.toLowerCase()];
+
+          const nameBlock = (
+            <button
+              onClick={() => setExpanded(isOpen ? null : kw.id)}
+              className="text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 rounded-sm"
+            >
+              <div className="flex items-center gap-1.5">
+                {isChecking && <Spinner className="text-muted shrink-0" />}
+                {!isChecking && justUpdated && (
+                  <span className="text-rise text-xs shrink-0" aria-label="Updated">
+                    ✓
+                  </span>
+                )}
+                <span className="text-sm text-ink">{kw.term}</span>
+              </div>
+              <div className="text-xs text-muted">
+                {kw.country.toUpperCase()}
+                {city ? ` · ${city}` : ""} · {kw.device}
+              </div>
+              {kw.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {kw.tags.map((t) => (
+                    <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-line text-muted">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </button>
+          );
+
           return (
             <div key={kw.id}>
-              <div className={`${gridCols} py-3`}>
+              {/* Desktop row */}
+              <div className={`${desktopGridCols(!!gscMetrics)} py-3`}>
                 <input
                   type="checkbox"
                   checked={selected.has(kw.id)}
@@ -610,46 +656,19 @@ export default function KeywordTable({
                   aria-label={`Select ${kw.term}`}
                 />
 
-                <button
-                  onClick={() => setExpanded(isOpen ? null : kw.id)}
-                  className="text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 rounded-sm"
-                >
-                  <div className="flex items-center gap-1.5">
-                    {isChecking && <Spinner className="text-muted shrink-0" />}
-                    {!isChecking && justUpdated && (
-                      <span className="text-rise text-xs shrink-0" aria-label="Updated">
-                        ✓
-                      </span>
-                    )}
-                    <span className="text-sm text-ink">{kw.term}</span>
-                  </div>
-                  <div className="text-xs text-muted">
-                    {kw.country.toUpperCase()}
-                    {city ? ` · ${city}` : ""} · {kw.device}
-                  </div>
-                  {kw.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {kw.tags.map((t) => (
-                        <span
-                          key={t}
-                          className="text-[10px] px-1.5 py-0.5 rounded bg-line text-muted"
-                        >
-                          {t}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </button>
+                {nameBlock}
 
                 <PositionCell
                   current={latest?.position ?? null}
                   previous={prev?.position ?? null}
-                  url={latest?.url}
                   maxCheckDepth={maxCheckDepth}
-                  gsc={gscMetrics?.[kw.term.toLowerCase()]}
                 />
 
+                {gscMetrics && <GscCell gsc={gsc} />}
+
                 <Sparkline values={kw.checks.slice().reverse().map((c) => c.position)} />
+
+                <RankingUrlCell url={latest?.url} />
 
                 {latest ? (
                   <RelativeTime iso={latest.checkedAt} className="text-xs text-muted cursor-default" />
@@ -672,6 +691,63 @@ export default function KeywordTable({
                 >
                   Remove
                 </button>
+              </div>
+
+              {/* Mobile card — same data, stacked instead of columned */}
+              <div className="md:hidden py-3 px-1 flex gap-3">
+                <input
+                  type="checkbox"
+                  checked={selected.has(kw.id)}
+                  onClick={(e) => toggleOne(kw.id, index, e.shiftKey)}
+                  onChange={() => {}}
+                  className="accent-accent mt-1 shrink-0"
+                  aria-label={`Select ${kw.term}`}
+                />
+                <div className="flex-1 min-w-0 space-y-2">
+                  {nameBlock}
+
+                  <div className="flex items-center justify-between gap-3">
+                    <PositionCell
+                      current={latest?.position ?? null}
+                      previous={prev?.position ?? null}
+                      maxCheckDepth={maxCheckDepth}
+                    />
+                    <Sparkline values={kw.checks.slice().reverse().map((c) => c.position)} />
+                    {latest ? (
+                      <RelativeTime iso={latest.checkedAt} className="text-xs text-muted cursor-default shrink-0" />
+                    ) : (
+                      <span className="text-xs text-muted shrink-0">—</span>
+                    )}
+                  </div>
+
+                  {(latest?.url || gsc) && (
+                    <div className="flex items-center justify-between gap-3 text-xs">
+                      <RankingUrlCell url={latest?.url} />
+                      {gsc && (
+                        <span className="text-muted shrink-0">
+                          {formatCompact(gsc.clicks)} clicks · {formatCompact(gsc.impressions)} impr
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-4 pt-1">
+                    <button
+                      onClick={() => checkOne(kw.id)}
+                      disabled={isChecking || isRemoving}
+                      className="text-xs text-muted hover:text-accent disabled:opacity-50"
+                    >
+                      Check
+                    </button>
+                    <button
+                      onClick={() => removeOne(kw.id)}
+                      disabled={isChecking || isRemoving}
+                      className="text-xs text-muted hover:text-fall disabled:opacity-50"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {error && (

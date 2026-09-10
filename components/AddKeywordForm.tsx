@@ -27,11 +27,13 @@ export default function AddKeywordForm({
   defaultCountry = "us",
   defaultLanguage = "en",
   defaultLocation = "",
+  onSuccess,
 }: {
   domainId: string;
   defaultCountry?: string;
   defaultLanguage?: string;
   defaultLocation?: string;
+  onSuccess?: () => void;
 }) {
   const [terms, setTerms] = useState("");
   const [tagsInput, setTagsInput] = useState("");
@@ -85,11 +87,14 @@ export default function AddKeywordForm({
       setError(body.error ?? "Something went wrong");
       return;
     }
+    let clean = true;
     if (isSingle) {
       if (body.duplicate) {
         setNotice(`"${termList[0]}" is already tracked for this country/device/location.`);
+        clean = false;
       } else if (body.outcome?.error) {
         setError(`Added, but the first check failed: ${body.outcome.error}`);
+        clean = false;
       }
     } else {
       const skipped = body.skipped ?? 0;
@@ -98,11 +103,15 @@ export default function AddKeywordForm({
           (skipped > 0 ? ` (skipped ${skipped} already tracked)` : "") +
           ` — hit "Refresh now" to check them.`
       );
+      clean = skipped === 0;
     }
     setTerms("");
     setTagsInput("");
     requestAnimationFrame(autoGrow);
     router.refresh();
+    // Auto-close the modal on a clean add; leave it open when there's a
+    // notice/error worth reading first (duplicate, failed check, skips).
+    if (clean) onSuccess?.();
   }
 
   const selectClasses =

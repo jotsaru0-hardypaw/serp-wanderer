@@ -15,9 +15,6 @@ export default async function SearchConsolePage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/" className="text-xs text-muted hover:text-accent">
-          ← All domains
-        </Link>
         <h1 className="text-xl font-semibold text-ink">Search Console</h1>
       </div>
 

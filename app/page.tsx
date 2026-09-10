@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import { getSessionUser } from "@/lib/auth";
-import AddDomainForm from "@/components/AddDomainForm";
 
 export const dynamic = "force-dynamic";
 
@@ -14,15 +13,10 @@ export default async function HomePage() {
   const [domains, settings] = await Promise.all([
     prisma.domain.findMany({
       where: { userId: user.id },
-      orderBy: { createdAt: "asc" },
       include: {
         keywords: {
-          select: {
-            checks: {
-              orderBy: { checkedAt: "desc" },
-              take: 2,
-              select: { position: true },
-            },
+          include: {
+            checks: { orderBy: { checkedAt: "desc" }, take: 2, select: { position: true } },
           },
         },
       },
@@ -31,22 +25,26 @@ export default async function HomePage() {
   ]);
 
   const needsSetup = !settings.brightdataApiKey || !settings.brightdataZone;
+  const totalKeywords = domains.reduce((sum, d) => sum + d.keywords.length, 0);
 
-  const summaries = domains.map((d) => {
-    let improved = 0;
-    let declined = 0;
+  // Biggest single mover across every domain — gives the home page something
+  // worth glancing at instead of just being an empty landing spot now that
+  // the domain list lives in the sidebar.
+  let biggestMover: { domainId: string; domainName: string; term: string; delta: number } | null = null;
+  for (const d of domains) {
     for (const kw of d.keywords) {
       const [latest, prev] = kw.checks;
-      if (latest?.position != null && prev?.position != null && latest.position !== prev.position) {
-        if (latest.position < prev.position) improved++;
-        else declined++;
+      if (latest?.position != null && prev?.position != null) {
+        const delta = prev.position - latest.position;
+        if (delta !== 0 && (!biggestMover || Math.abs(delta) > Math.abs(biggestMover.delta))) {
+          biggestMover = { domainId: d.id, domainName: d.name, term: kw.term, delta };
+        }
       }
     }
-    return { id: d.id, name: d.name, count: d.keywords.length, improved, declined };
-  });
+  }
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       {needsSetup && (
         <div className="rounded-md border border-line bg-surface px-4 py-3 flex items-center justify-between">
           <p className="text-sm text-ink">
@@ -58,43 +56,43 @@ export default async function HomePage() {
         </div>
       )}
 
-      <section>
-        <h1 className="text-xl font-semibold text-ink mb-1">Domains</h1>
-        <p className="text-sm text-muted mb-5">
-          Positions update on the daily schedule, or refresh a domain any time.
-        </p>
-        <AddDomainForm />
-      </section>
-
-      <section>
-        {summaries.length === 0 ? (
-          <p className="text-sm text-muted">No domains yet — add one above.</p>
-        ) : (
-          <div className="divide-y divide-line border-t border-line">
-            {summaries.map((d) => (
-              <Link
-                key={d.id}
-                href={`/domains/${d.id}`}
-                className="flex items-center justify-between py-4 group focus-visible:outline-none"
-              >
-                <div>
-                  <div className="text-sm font-medium text-ink group-hover:text-accent">{d.name}</div>
-                  <div className="text-xs text-muted">
-                    {d.count} keyword{d.count === 1 ? "" : "s"} tracked
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 font-mono text-xs tabular-nums">
-                  {d.improved > 0 && <span className="text-rise">▲{d.improved}</span>}
-                  {d.declined > 0 && <span className="text-fall">▼{d.declined}</span>}
-                  {d.improved === 0 && d.declined === 0 && (
-                    <span className="text-muted">no change</span>
-                  )}
-                </div>
-              </Link>
-            ))}
+      {domains.length === 0 ? (
+        <div>
+          <h1 className="text-xl font-semibold text-ink mb-1">Welcome to SERP Wanderer</h1>
+          <p className="text-sm text-muted">Add your first domain from the sidebar to start tracking.</p>
+        </div>
+      ) : (
+        <>
+          <div>
+            <h1 className="text-xl font-semibold text-ink mb-1">Overview</h1>
+            <p className="text-sm text-muted">
+              {domains.length} domain{domains.length === 1 ? "" : "s"} · {totalKeywords} keyword
+              {totalKeywords === 1 ? "" : "s"} tracked
+            </p>
           </div>
-        )}
-      </section>
+
+          {biggestMover && (
+            <Link
+              href={`/domains/${biggestMover.domainId}`}
+              className="block rounded-md border border-line bg-surface px-4 py-3 hover:border-accent"
+            >
+              <p className="text-xs text-muted mb-1">Biggest mover</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-ink">{biggestMover.term}</p>
+                  <p className="text-xs text-muted">{biggestMover.domainName}</p>
+                </div>
+                <span className={`font-mono text-sm tabular-nums ${biggestMover.delta > 0 ? "text-rise" : "text-fall"}`}>
+                  {biggestMover.delta > 0 ? "▲" : "▼"}
+                  {Math.abs(biggestMover.delta)}
+                </span>
+              </div>
+            </Link>
+          )}
+
+          <p className="text-sm text-muted">Pick a domain from the sidebar to view its keywords.</p>
+        </>
+      )}
     </div>
   );
 }

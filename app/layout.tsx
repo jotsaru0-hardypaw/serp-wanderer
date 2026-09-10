@@ -3,7 +3,10 @@ import { Public_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { APP_VERSION, LAST_UPDATED } from "@/lib/version";
 import { getSessionUser } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import LogoutButton from "@/components/LogoutButton";
+import Sidebar from "@/components/Sidebar";
+import MobileDomainSwitcher from "@/components/MobileDomainSwitcher";
 
 const publicSans = Public_Sans({
   subsets: ["latin"],
@@ -32,11 +35,45 @@ const lastUpdatedFormatted = new Date(LAST_UPDATED).toLocaleDateString(undefined
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const user = await getSessionUser();
 
+  // Fetched once here (not per-page) so the sidebar/switcher persists across
+  // navigation without a re-fetch flash — the whole point of a workspace
+  // shell instead of separate full pages.
+  const domains = user
+    ? await prisma.domain.findMany({
+        where: { userId: user.id },
+        orderBy: { createdAt: "asc" },
+        include: {
+          keywords: {
+            select: {
+              checks: {
+                orderBy: { checkedAt: "desc" },
+                take: 2,
+                select: { position: true },
+              },
+            },
+          },
+        },
+      })
+    : [];
+
+  const domainSummaries = domains.map((d) => {
+    let improved = 0;
+    let declined = 0;
+    for (const kw of d.keywords) {
+      const [latest, prev] = kw.checks;
+      if (latest?.position != null && prev?.position != null && latest.position !== prev.position) {
+        if (latest.position < prev.position) improved++;
+        else declined++;
+      }
+    }
+    return { id: d.id, name: d.name, count: d.keywords.length, improved, declined };
+  });
+
   return (
     <html lang="en" className={`${publicSans.variable} ${plexMono.variable}`}>
       <body className="min-h-screen bg-paper font-sans text-ink antialiased">
         <header className="border-b border-line">
-          <div className="mx-auto max-w-4xl px-6 py-4 flex items-center justify-between">
+          <div className="px-4 md:px-6 py-3 flex items-center justify-between">
             <a href="/" className="flex items-baseline gap-1.5">
               <span className="text-[15px] font-semibold tracking-tight text-ink">SERP Wanderer</span>
               <span
@@ -48,7 +85,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </a>
             {user && (
               <div className="flex items-center gap-4">
-                <span className="text-sm text-muted">{user.username}</span>
+                <span className="hidden sm:inline text-sm text-muted">{user.username}</span>
                 <a href="/search-console" className="text-sm text-muted hover:text-accent">
                   Search Console
                 </a>
@@ -60,7 +97,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             )}
           </div>
         </header>
-        <main className="mx-auto max-w-4xl px-6 py-10">{children}</main>
+
+        {user ? (
+          <div className="flex">
+            <Sidebar domains={domainSummaries} />
+            <div className="flex-1 min-w-0">
+              <MobileDomainSwitcher domains={domainSummaries} />
+              <main className="px-4 md:px-8 py-6 md:py-10 max-w-4xl">{children}</main>
+            </div>
+          </div>
+        ) : (
+          <main className="mx-auto max-w-sm px-6 py-10">{children}</main>
+        )}
       </body>
     </html>
   );
