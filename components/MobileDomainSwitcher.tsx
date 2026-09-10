@@ -12,6 +12,7 @@ export default function MobileDomainSwitcher({ domains }: { domains: DomainSumma
   const currentId = pathname.startsWith("/domains/") ? pathname.split("/")[2] : "";
 
   if (domains.length === 0) return null;
+  if (pathname === "/settings" || pathname.startsWith("/search-console")) return null;
 
   return (
     <div className="md:hidden border-b border-line px-4 py-2.5">

@@ -54,7 +54,7 @@ export default async function DomainPage({ params }: { params: { id: string } })
   const gscMetrics = gscMetricsMap ? Object.fromEntries(gscMetricsMap) : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold text-ink truncate">{domain.name}</h1>
         <div className="flex items-center gap-2 shrink-0">

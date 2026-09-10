@@ -26,7 +26,7 @@ export default function AddKeywordTrigger({
         + Add keyword
       </button>
       {open && (
-        <Modal title="Add keyword" onClose={() => setOpen(false)}>
+        <Modal title="Add keyword" onClose={() => setOpen(false)} width="w-[560px]">
           <AddKeywordForm
             domainId={domainId}
             defaultCountry={defaultCountry}

@@ -54,7 +54,7 @@ export default function AddKeywordForm({
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+    el.style.height = `${Math.max(el.scrollHeight, 128)}px`;
   }
 
   async function submit(e: React.FormEvent) {
@@ -115,14 +115,19 @@ export default function AddKeywordForm({
   }
 
   const selectClasses =
-    "rounded-md border border-line bg-surface px-2 py-2 text-sm text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40";
+    "w-full rounded-md border border-line bg-surface px-3 py-2.5 text-sm text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40";
   const inputClasses =
-    "rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40";
+    "w-full rounded-md border border-line bg-surface px-3 py-2.5 text-sm text-ink placeholder:text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40";
+  const labelClasses = "block text-sm text-ink mb-1.5";
 
   return (
-    <form onSubmit={submit} className="space-y-2">
-      <div className="flex flex-wrap gap-2 items-start">
+    <form onSubmit={submit} className="space-y-5">
+      <div>
+        <label className={labelClasses} htmlFor="kw-terms">
+          Keyword{termCount > 1 ? "s" : ""}
+        </label>
         <textarea
+          id="kw-terms"
           ref={textareaRef}
           value={terms}
           onChange={(e) => {
@@ -130,64 +135,84 @@ export default function AddKeywordForm({
             autoGrow();
           }}
           onKeyDown={(e) => {
-            // Enter submits (matches a single-line bar's feel); Shift+Enter
+            // Enter submits when there's one clean line; Shift+Enter always
             // adds a line, for pasting/typing several keywords.
-            if (e.key === "Enter" && !e.shiftKey) {
+            if (e.key === "Enter" && !e.shiftKey && !terms.includes("\n")) {
               e.preventDefault();
               e.currentTarget.form?.requestSubmit();
             }
           }}
-          placeholder={"dog joint supplements\n(paste a column from Excel, or comma-separate on one line)"}
-          rows={1}
-          className={`flex-1 min-w-[220px] resize-none overflow-hidden leading-normal ${inputClasses}`}
+          placeholder={"dog joint supplements\n\nPaste a column from Excel/Sheets, or comma-separate on one line — each becomes its own keyword."}
+          rows={5}
+          className={`resize-y leading-relaxed ${inputClasses}`}
         />
+      </div>
+
+      <div>
+        <label className={labelClasses} htmlFor="kw-tags">
+          Tags <span className="text-muted font-normal">(optional)</span>
+        </label>
         <input
+          id="kw-tags"
           value={tagsInput}
           onChange={(e) => setTagsInput(e.target.value)}
-          placeholder="tags (comma separated)"
-          className={`min-w-[160px] ${inputClasses}`}
+          placeholder="e.g. supplements, priority"
+          className={inputClasses}
         />
-        <select value={country} onChange={(e) => setCountry(e.target.value)} className={selectClasses}>
-          <option value="us">US</option>
-          <option value="in">IN</option>
-          <option value="gb">GB</option>
-          <option value="ca">CA</option>
-          <option value="au">AU</option>
-        </select>
+      </div>
+
+      <div className={`grid gap-4 ${country === "us" ? "grid-cols-3" : "grid-cols-2"}`}>
+        <div>
+          <label className={labelClasses} htmlFor="kw-country">
+            Location
+          </label>
+          <select id="kw-country" value={country} onChange={(e) => setCountry(e.target.value)} className={selectClasses}>
+            <option value="us">US</option>
+            <option value="in">IN</option>
+            <option value="gb">GB</option>
+            <option value="ca">CA</option>
+            <option value="au">AU</option>
+          </select>
+        </div>
         {country === "us" && (
-          <LocationInput
-            id="keyword-location"
-            value={location}
-            onChange={setLocation}
-            className={`min-w-[180px] ${inputClasses}`}
-          />
+          <div>
+            <label className={labelClasses} htmlFor="kw-city">
+              City <span className="text-muted font-normal">(optional)</span>
+            </label>
+            <LocationInput id="kw-city" value={location} onChange={setLocation} className={inputClasses} />
+          </div>
         )}
-        <select
-          value={device}
-          onChange={(e) => setDevice(e.target.value as "desktop" | "mobile")}
-          className={selectClasses}
-        >
-          <option value="desktop">Desktop</option>
-          <option value="mobile">Mobile</option>
-        </select>
+        <div>
+          <label className={labelClasses} htmlFor="kw-device">
+            Device
+          </label>
+          <select
+            id="kw-device"
+            value={device}
+            onChange={(e) => setDevice(e.target.value as "desktop" | "mobile")}
+            className={selectClasses}
+          >
+            <option value="desktop">Desktop</option>
+            <option value="mobile">Mobile</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
         <button
           type="submit"
           disabled={loading || termCount === 0}
-          className="flex items-center gap-1.5 rounded-md bg-ink text-white text-sm px-4 py-2 hover:bg-accent transition-colors motion-reduce:transition-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+          className="w-full flex items-center justify-center gap-1.5 rounded-md bg-ink text-white text-sm px-4 py-2.5 hover:bg-accent transition-colors motion-reduce:transition-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
         >
           {loading && <Spinner />}
-          {loading
-            ? "Adding…"
-            : termCount > 1
-            ? `Add ${termCount} keywords`
-            : "Add keyword"}
+          {loading ? "Adding…" : termCount > 1 ? `Add ${termCount} keywords` : "Add keyword"}
         </button>
+        <p className="text-xs text-muted mt-2">
+          More than one keyword skips the instant check, to avoid timeouts — hit "Refresh now"
+          afterward to check them.
+        </p>
       </div>
-      <p className="text-xs text-muted">
-        Paste a column of keywords from Excel/Sheets, or comma-separate them on one line — either
-        way, each one is added separately. More than one skips the instant check (to avoid
-        timeouts); hit "Refresh now" afterward to check them.
-      </p>
+
       {notice && <p className="text-xs text-rise">{notice}</p>}
       {error && <p className="text-xs text-fall">{error}</p>}
     </form>

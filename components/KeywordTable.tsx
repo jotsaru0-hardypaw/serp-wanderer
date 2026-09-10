@@ -182,7 +182,7 @@ function desktopGridCols(hasGsc: boolean) {
     hasGsc
       ? "md:grid-cols-[20px_1fr_70px_100px_84px_120px_96px_50px_60px]"
       : "md:grid-cols-[20px_1fr_70px_84px_120px_96px_50px_60px]"
-  } items-center gap-3`;
+  } items-center gap-4`;
 }
 
 export default function KeywordTable({
@@ -421,13 +421,13 @@ export default function KeywordTable({
 
   return (
     <div className="md:min-w-[720px]">
-      <div className="flex items-center justify-between pb-2 gap-3">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3 rounded-md border border-line bg-surface px-4 py-3 mb-1">
+        <div className="flex items-center gap-4">
           {allTags.length > 0 ? (
             <select
               value={tagFilter}
               onChange={(e) => setTagFilter(e.target.value)}
-              className="text-xs rounded-md border border-line bg-surface px-2 py-1 text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+              className="text-sm rounded-md border border-line bg-paper px-2.5 py-1.5 text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
             >
               <option value="all">All tags</option>
               {allTags.map((t) => (
@@ -440,13 +440,13 @@ export default function KeywordTable({
             <span />
           )}
           {allTags.length > 0 && (
-            <button onClick={() => setTagManagerOpen(true)} className="text-xs text-muted hover:text-accent">
+            <button onClick={() => setTagManagerOpen(true)} className="text-sm text-muted hover:text-accent">
               Manage tags
             </button>
           )}
         </div>
 
-        <div className="flex items-center gap-3 text-xs">
+        <div className="flex items-center gap-4 text-sm">
           {selected.size > 0 && (
             <>
               <span className="text-muted">{selected.size} selected</span>
@@ -573,8 +573,7 @@ export default function KeywordTable({
         />
       )}
 
-
-      <div className={`${desktopGridCols(!!gscMetrics)} border-b border-line pb-2 text-xs text-muted`}>
+      <div className={`${desktopGridCols(!!gscMetrics)} border-b border-line pb-3 pt-5 text-sm text-muted`}>
         <input
           type="checkbox"
           checked={allVisibleSelected}
@@ -646,7 +645,7 @@ export default function KeywordTable({
           return (
             <div key={kw.id}>
               {/* Desktop row */}
-              <div className={`${desktopGridCols(!!gscMetrics)} py-3`}>
+              <div className={`${desktopGridCols(!!gscMetrics)} py-4`}>
                 <input
                   type="checkbox"
                   checked={selected.has(kw.id)}
@@ -694,7 +693,7 @@ export default function KeywordTable({
               </div>
 
               {/* Mobile card — same data, stacked instead of columned */}
-              <div className="md:hidden py-3 px-1 flex gap-3">
+              <div className="md:hidden py-4 px-1 flex gap-3">
                 <input
                   type="checkbox"
                   checked={selected.has(kw.id)}

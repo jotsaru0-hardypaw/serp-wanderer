@@ -8,6 +8,12 @@ export type DomainSummary = { id: string; name: string; count: number; improved:
 export default function Sidebar({ domains }: { domains: DomainSummary[] }) {
   const pathname = usePathname();
 
+  // Not relevant context on account-level pages — hide it there so those
+  // pages get full width instead of implying a domain is still "selected."
+  if (pathname === "/settings" || pathname.startsWith("/search-console")) {
+    return null;
+  }
+
   return (
     <aside className="hidden md:flex md:flex-col w-60 shrink-0 border-r border-line min-h-[calc(100vh-49px)]">
       <div className="flex-1 overflow-y-auto py-4">
@@ -19,7 +25,7 @@ export default function Sidebar({ domains }: { domains: DomainSummary[] }) {
               <a
                 key={d.id}
                 href={`/domains/${d.id}`}
-                className={`flex items-center justify-between px-4 py-2 text-sm ${
+                className={`flex items-center justify-between px-4 py-2.5 text-sm ${
                   active ? "bg-line/60 text-ink font-medium" : "text-ink hover:bg-line/30"
                 }`}
               >
